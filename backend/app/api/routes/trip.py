@@ -34,11 +34,11 @@ async def plan_trip(request: TripRequest):
 
         agent = get_trip_planner_agent()
 
-        print("🚀 开始生成旅行计划...")
+        print("🚀 开始生成旅行计划...", flush=True)
 
         trip_plan = await agent.plan_trip(request)
 
-        print("✅ 旅行计划生成成功,准备返回响应\n")
+        print("✅ 旅行计划生成成功,准备返回响应\n", flush=True)
 
         return TripPlanResponse(
             success=True, message="旅行计划生成成功", data=trip_plan

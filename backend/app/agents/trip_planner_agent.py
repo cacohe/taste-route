@@ -1,6 +1,7 @@
 """多智能体旅行规划系统 - 使用 LangChain 实现 ReAct 代理协作"""
 
 import asyncio
+import time
 from typing import List, Optional
 
 from langchain.agents import create_agent
@@ -24,7 +25,7 @@ from .prompts import (
 class MultiAgentTripPlanner:
     """多智能体旅行规划系统
 
-    工作流程：并行执行前 3 个 Agent → Planner Agent 整合 → 解析为 TripPlan
+    工作流程：串行执行前 3 个 Agent（共享单一 MCP 连接）→ Planner Agent 整合 → 解析为 TripPlan
     """
 
     def __init__(self):
@@ -85,12 +86,24 @@ class MultiAgentTripPlanner:
 
     async def _invoke_agent(self, agent, query: str, step_name: str) -> str:
         """统一 Agent 调用入口"""
+        started_at = time.monotonic()
+        print(f"  ▶ 调用 {step_name} Agent...", flush=True)
+
         try:
             result = await agent.ainvoke({"messages": [HumanMessage(content=query)]})
             messages = result.get("messages", [])
-            return messages[-1].content if messages else ""
+            content = messages[-1].content if messages else ""
+            elapsed = time.monotonic() - started_at
+            preview = content.replace("\n", " ")[:120]
+            print(
+                f"  ✅ {step_name} 完成 ({elapsed:.1f}s, {len(content)} 字符)"
+                + (f" | {preview}..." if preview else ""),
+                flush=True,
+            )
+            return content
         except Exception as e:
-            print(f"⚠️  {step_name}失败: {str(e)}")
+            elapsed = time.monotonic() - started_at
+            print(f"  ⚠️  {step_name} 失败 ({elapsed:.1f}s): {str(e)}", flush=True)
             return ""
 
     async def plan_trip(self, request: TripRequest) -> TripPlan:
@@ -105,13 +118,21 @@ class MultiAgentTripPlanner:
             print(
                 f"偏好: {', '.join(request.preferences) if request.preferences else '无'}"
             )
-            print(f"{'=' * 60}\n")
+            print(f"{'=' * 60}\n", flush=True)
 
-            # 并行执行：景点搜索、天气查询、酒店搜索
-            attraction_response, weather_response, hotel_response = await asyncio.gather(
-                self._search_attractions(request),
-                self._query_weather(request),
-                self._search_hotels(request),
+            pipeline_started_at = time.monotonic()
+            print(
+                "🔁 串行执行 MCP Agent（避免单一 stdio 连接并发）",
+                flush=True,
+            )
+
+            attraction_response = await self._search_attractions(request)
+            weather_response = await self._query_weather(request)
+            hotel_response = await self._search_hotels(request)
+
+            print(
+                f"⏱️  前 3 步 MCP Agent 总耗时: {time.monotonic() - pipeline_started_at:.1f}s",
+                flush=True,
             )
 
             planner_response = await self._generate_plan(
@@ -134,18 +155,18 @@ class MultiAgentTripPlanner:
             return create_fallback_plan(request)
 
     async def _search_attractions(self, request: TripRequest) -> str:
-        print("📍 步骤1: 搜索景点...")
+        print("📍 [1/4] 搜索景点...", flush=True)
         keywords = request.preferences[0] if request.preferences else "景点"
         query = f"请使用maps_text_search工具搜索{request.city}的{keywords}相关景点。"
         return await self._invoke_agent(self.attraction_agent, query, "景点搜索")
 
     async def _query_weather(self, request: TripRequest) -> str:
-        print("🌤️  步骤2: 查询天气...")
+        print("🌤️  [2/4] 查询天气...", flush=True)
         query = f"请使用maps_weather工具查询{request.city}的天气信息。"
         return await self._invoke_agent(self.weather_agent, query, "天气查询")
 
     async def _search_hotels(self, request: TripRequest) -> str:
-        print("🏨 步骤3: 搜索酒店...")
+        print("🏨 [3/4] 搜索酒店...", flush=True)
         query = (
             f"请使用maps_text_search工具搜索{request.city}的酒店，关键词使用'酒店'。"
         )
@@ -154,7 +175,7 @@ class MultiAgentTripPlanner:
     async def _generate_plan(
         self, request: TripRequest, attractions: str, weather: str, hotels: str
     ) -> str:
-        print("📋 步骤4: 生成行程计划...")
+        print("📋 [4/4] 生成行程计划...", flush=True)
         query = build_planner_user_query(request, attractions, weather, hotels)
         return await self._invoke_agent(self.planner_agent, query, "行程规划")
 
