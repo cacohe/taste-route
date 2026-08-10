@@ -5,15 +5,15 @@
 ## ✨ 功能特点
 
 - 🤖 **AI驱动的旅行规划**: 基于LangChain ReAct Agent架构，4个专业Agent协作生成详细的多日旅程
-- 🗺️ **高德地图集成**: 通过langchain-mcp-adapters接入高德地图服务，支持景点搜索、路线规划、天气查询
-- 🧠 **智能工具调用**: Agent自动调用MCP工具，获取实时POI、路线和天气信息
+- 🗺️ **高德地图集成**: 通过langchain-mcp-adapters接入高德地图服务，支持景点搜索、天气查询
+- 🧠 **智能工具调用**: Agent自动调用MCP工具，获取实时POI和天气信息
 - 🎨 **现代化前端**: Vue3 + TypeScript + Vite，响应式设计，流畅的用户体验
 - 📱 **完整功能**: 包含住宿、交通、餐饮和景点游览时间推荐
 
 ## 🏗️ 技术栈
 
 ### 后端
-- **框架**: LangChain + LangGraph
+- **框架**: LangChain
 - **LLM**: MiniMax M2.7 (通过OpenAI兼容API)
 - **MCP工具**: langchain-mcp-adapters + amap-mcp-server (高德地图)
 - **API**: FastAPI
@@ -32,13 +32,15 @@ trip-planner/
 ├── backend/                    # 后端服务
 │   ├── app/
 │   │   ├── agents/            # Agent实现
-│   │   │   └── trip_planner_agent.py
+│   │   │   ├── trip_planner_agent.py
+│   │   │   ├── prompts.py
+│   │   │   ├── parsers.py
+│   │   │   └── fallback.py
 │   │   ├── api/               # FastAPI路由
 │   │   │   ├── main.py
 │   │   │   └── routes/
 │   │   │       ├── trip.py
-│   │   │       ├── poi.py
-│   │   │       └── map.py
+│   │   │       └── poi.py
 │   │   ├── services/          # 服务层
 │   │   │   ├── amap_service.py
 │   │   │   ├── llm_service.py
@@ -117,11 +119,10 @@ pnpm install
 3. 配置环境变量
 ```bash
 cp .env.example .env
-# 编辑.env文件，填入高德地图Web API Key和Web端JS API Key
+# 编辑.env文件，填入高德地图Web端JS API Key
 ```
 
 必需的配置项：
-- `VITE_AMAP_WEB_KEY` - 高德地图Web服务API Key
 - `VITE_AMAP_WEB_JS_KEY` - 高德地图Web端JS API Key
 
 4. 启动开发服务器
@@ -130,6 +131,52 @@ pnpm dev
 ```
 
 5. 打开浏览器访问 `http://localhost:5173`
+
+## 🌐 Render 部署
+
+本项目前后端分离：前端为 Vite 构建的静态 SPA，后端为 FastAPI API 服务。在 [Render](https://render.com) 上推荐使用 **1 个 Web Service（后端）+ 1 个 Static Site（前端）** 部署；
+
+### Static Site（前端）
+
+| 配置项 | 值 |
+|---|---|
+| Root Directory | `frontend` |
+| Build Command | `pnpm install && pnpm build` |
+| Publish Directory | `dist` |
+
+**环境变量**（构建时生效）：
+
+| 变量 | 说明 |
+|---|---|
+| `VITE_API_BASE_URL` | 后端 Web Service 的 URL，例如 `https://your-backend.onrender.com` |
+| `VITE_AMAP_WEB_JS_KEY` | 高德地图 Web 端（JS API）Key |
+
+### Web Service（后端）
+
+| 配置项 | 值 |
+|---|---|
+| Root Directory | `backend` |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `uvicorn app.api.main:app --host 0.0.0.0 --port $PORT` |
+
+**环境变量**：
+
+| 变量 | 说明 |
+|---|---|
+| `MINIMAX_API_KEY` | MiniMax API 密钥 |
+| `MINIMAX_BASE_URL` | MiniMax API 地址（默认 `https://api.minimaxi.com/v1`） |
+| `MINIMAX_MODEL` | 模型名称（默认 `MiniMax-M2.7`） |
+| `AMAP_API_KEY` | 高德地图 Web 服务 API 密钥 |
+| `UNSPLASH_ACCESS_KEY` | Unsplash 图片服务密钥（可选） |
+| `CORS_ORIGINS` | 前端 Static Site 域名，例如 `https://your-frontend.onrender.com` |
+
+> Render 会自动注入 `PORT` 环境变量，启动命令应使用 `$PORT`，不要写死 `8000`。
+
+### 部署注意事项
+
+- **MCP 子进程**：后端通过 `python -m amap_mcp_server` 启动高德 MCP 服务，`amap-mcp-server` 已在 `requirements.txt` 中，无需额外安装 `uvx`。
+- **冷启动与超时**：免费档 Web Service 在无请求约 15 分钟后会休眠；行程规划涉及 LLM 多 Agent 调用，耗时较长，注意 Render 请求超时限制。
+- **实例规格**：LangChain Agent + MCP 子进程内存占用较高，免费实例可能吃紧，必要时选择更高规格。
 
 ## 📝 使用指南
 
@@ -143,14 +190,14 @@ pnpm dev
 2. 点击"生成旅行计划"按钮
 
 3. 系统将:
-   - 并行调用4个专业Agent搜索景点、查询天气、搜索酒店
-   - 整合所有信息生成完整的多日行程
-   - 返回每日详细行程、景点地图标记、交通路线、天气预报、餐饮推荐
+   - 并行调用景点、天气、酒店三个Agent，再由行程规划Agent整合信息
+   - 生成完整的多日行程
+   - 返回每日详细行程、景点地图标记、天气预报、餐饮推荐
 
 4. 查看结果:
    - 每日详细行程安排
    - 景点信息与地图标记
-   - 交通路线规划
+   - 地图路线展示
    - 天气预报
    - 餐饮推荐
 
@@ -199,10 +246,6 @@ Agent通过MCP协议调用高德地图服务：
 
 主要端点：
 - `POST /api/trip/plan` - 生成旅行计划
-- `GET /api/map/poi` - 搜索POI
-- `GET /api/map/weather` - 查询天气
-- `POST /api/map/route` - 规划路线
-- `GET /api/poi/detail/{poi_id}` - 获取POI详情
 - `GET /api/poi/photo` - 获取景点图片
 
 ## 🤝 贡献指南

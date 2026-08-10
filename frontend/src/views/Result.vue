@@ -316,6 +316,7 @@ import AMapLoader from '@amap/amap-jsapi-loader'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import type { TripPlan } from '@/types'
+import { getAttractionPhoto } from '@/services/api'
 
 const router = useRouter()
 const tripPlan = ref<TripPlan | null>(null)
@@ -360,15 +361,14 @@ const toggleEditMode = () => {
 }
 
 // 保存修改
-const saveChanges = () => {
+const saveChanges = async () => {
   editMode.value = false
-  // 更新sessionStorage
   if (tripPlan.value) {
     sessionStorage.setItem('tripPlan', JSON.stringify(tripPlan.value))
+    await loadAttractionPhotos()
   }
   message.success('修改已保存')
 
-  // 重新初始化地图以反映更改
   if (map) {
     map.destroy()
   }
@@ -432,10 +432,9 @@ const loadAttractionPhotos = async () => {
 
   tripPlan.value.days.forEach(day => {
     day.attractions.forEach(attraction => {
-      const promise = fetch(`http://localhost:8000/api/poi/photo?name=${encodeURIComponent(attraction.name)}`)
-        .then(res => res.json())
+      const promise = getAttractionPhoto(attraction.name)
         .then(data => {
-          if (data.success && data.data.photo_url) {
+          if (data.success && data.data?.photo_url) {
             attractionPhotos.value[attraction.name] = data.data.photo_url
           }
         })
@@ -869,7 +868,7 @@ const addAttractionMarkers = (AMap: any) => {
         allAttractions.push({
           ...attraction,
           dayIndex,
-          attrIndex
+          attrIndex,
         })
       }
     })
@@ -900,7 +899,6 @@ const addAttractionMarkers = (AMap: any) => {
       offset: new AMap.Pixel(0, -30)
     })
 
-    // 点击标记显示信息窗口
     marker.on('click', () => {
       infoWindow.open(map, marker.getPosition())
     })
@@ -920,12 +918,11 @@ const addAttractionMarkers = (AMap: any) => {
   drawRoutes(AMap, allAttractions)
 }
 
-// 绘制路线
+// 绘制路线（前端直线连接，不调用后端 MCP）
 const drawRoutes = (AMap: any, attractions: any[]) => {
-  if (attractions.length < 2) return
+  if (!tripPlan.value || attractions.length < 2) return
 
-  // 按天分组绘制路线
-  const dayGroups: any = {}
+  const dayGroups: Record<number, any[]> = {}
   attractions.forEach(attr => {
     if (!dayGroups[attr.dayIndex]) {
       dayGroups[attr.dayIndex] = []
@@ -933,25 +930,27 @@ const drawRoutes = (AMap: any, attractions: any[]) => {
     dayGroups[attr.dayIndex].push(attr)
   })
 
-  // 为每天的景点绘制路线
-  Object.values(dayGroups).forEach((dayAttractions: any) => {
+  Object.values(dayGroups).forEach(dayAttractions => {
     if (dayAttractions.length < 2) return
 
-    const path = dayAttractions.map((attr: any) => [
-      attr.location.longitude,
-      attr.location.latitude
-    ])
+    for (let i = 0; i < dayAttractions.length - 1; i++) {
+      const origin = dayAttractions[i]
+      const destination = dayAttractions[i + 1]
 
-    const polyline = new AMap.Polyline({
-      path: path,
-      strokeColor: '#1890ff',
-      strokeWeight: 4,
-      strokeOpacity: 0.8,
-      strokeStyle: 'solid',
-      showDir: true // 显示方向箭头
-    })
+      const polyline = new AMap.Polyline({
+        path: [
+          [origin.location.longitude, origin.location.latitude],
+          [destination.location.longitude, destination.location.latitude],
+        ],
+        strokeColor: '#1890ff',
+        strokeWeight: 4,
+        strokeOpacity: 0.8,
+        strokeStyle: 'solid',
+        showDir: true,
+      })
 
-    map.add(polyline)
+      map.add(polyline)
+    }
   })
 }
 </script>

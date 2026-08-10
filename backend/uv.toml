@@ -1,0 +1,3 @@
+# amap-mcp-server 声明依赖 mcp==1.8.1，与 langchain-mcp-adapters 不兼容；
+# 实测 amap-mcp-server 0.1.11 可在 mcp 1.9+ 下正常运行，此处覆盖其版本约束。
+override-dependencies = ["mcp>=1.9.2,<2.0.0"]

@@ -93,3 +93,11 @@ export interface TripPlanResponse {
   data?: TripPlan
 }
 
+export interface AttractionPhotoResponse {
+  success: boolean
+  message: string
+  data?: {
+    name: string
+    photo_url: string | null
+  }
+}

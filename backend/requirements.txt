@@ -2,7 +2,11 @@
 langchain>=0.3.0
 langchain-core>=0.3.0
 langchain-openai>=0.2.0
-langchain-mcp-adapters>=0.1.0
+langchain-mcp-adapters>=0.2.2
+
+# MCP
+mcp>=1.9.2,<2.0.0
+amap-mcp-server==0.1.11
 
 # FastAPI and dependencies
 fastapi>=0.115.0

@@ -1,7 +1,7 @@
 """旅行规划API路由 - 处理 /api/trip/* 路径的请求"""
 
 from fastapi import APIRouter, HTTPException
-from ...models.schemas import TripRequest, TripPlanResponse, ErrorResponse
+from ...models.schemas import TripRequest, TripPlanResponse
 from ...agents.trip_planner_agent import get_trip_planner_agent
 
 router = APIRouter(prefix="/trip", tags=["旅行规划"])
@@ -32,12 +32,10 @@ async def plan_trip(request: TripRequest):
         print(f"   天数: {request.travel_days}")
         print(f"{'=' * 60}\n")
 
-        # 获取多智能体旅行规划器
         agent = get_trip_planner_agent()
 
         print("🚀 开始生成旅行计划...")
 
-        # 调用Agent生成旅行计划（异步）
         trip_plan = await agent.plan_trip(request)
 
         print("✅ 旅行计划生成成功,准备返回响应\n")
@@ -52,24 +50,3 @@ async def plan_trip(request: TripRequest):
 
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"生成旅行计划失败: {str(e)}")
-
-
-@router.get("/health", summary="健康检查", description="检查旅行规划服务是否正常")
-async def health_check():
-    """旅行规划服务健康检查
-
-    验证Agent系统是否可正常响应。
-
-    Returns:
-        包含健康状态和服务信息的字典
-    """
-    try:
-        agent = get_trip_planner_agent()
-
-        return {
-            "status": "healthy",
-            "service": "trip-planner",
-            "agent_type": "MultiAgentTripPlanner",
-        }
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"服务不可用: {str(e)}")
