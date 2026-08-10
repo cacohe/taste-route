@@ -208,15 +208,18 @@ import { ref, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { generateTripPlan } from '@/services/api'
-import type { TripFormData } from '@/types'
-import type { Dayjs } from 'dayjs'
+import {
+  buildTripFormPayload,
+  calculateTravelDays,
+  type TripFormState,
+} from '@/utils/tripForm'
 
 const router = useRouter()
 const loading = ref(false)
 const loadingProgress = ref(0)
 const loadingStatus = ref('')
 
-const formData = reactive<TripFormData & { start_date: Dayjs | null; end_date: Dayjs | null }>({
+const formData = reactive<TripFormState>({
   city: '',
   start_date: null,
   end_date: null,
@@ -230,10 +233,10 @@ const formData = reactive<TripFormData & { start_date: Dayjs | null; end_date: D
 // 监听日期变化,自动计算旅行天数
 watch([() => formData.start_date, () => formData.end_date], ([start, end]) => {
   if (start && end) {
-    const days = end.diff(start, 'day') + 1
-    if (days > 0 && days <= 30) {
+    const days = calculateTravelDays(start, end)
+    if (days !== null) {
       formData.travel_days = days
-    } else if (days > 30) {
+    } else if (end.diff(start, 'day') + 1 > 30) {
       message.warning('旅行天数不能超过30天')
       formData.end_date = null
     } else {
@@ -244,7 +247,8 @@ watch([() => formData.start_date, () => formData.end_date], ([start, end]) => {
 })
 
 const handleSubmit = async () => {
-  if (!formData.start_date || !formData.end_date) {
+  const requestData = buildTripFormPayload(formData)
+  if (!requestData) {
     message.error('请选择日期')
     return
   }
@@ -272,17 +276,6 @@ const handleSubmit = async () => {
   }, 500)
 
   try {
-    const requestData: TripFormData = {
-      city: formData.city,
-      start_date: formData.start_date.format('YYYY-MM-DD'),
-      end_date: formData.end_date.format('YYYY-MM-DD'),
-      travel_days: formData.travel_days,
-      transportation: formData.transportation,
-      accommodation: formData.accommodation,
-      preferences: formData.preferences,
-      free_text_input: formData.free_text_input
-    }
-
     const response = await generateTripPlan(requestData)
 
     clearInterval(progressInterval)

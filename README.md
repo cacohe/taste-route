@@ -156,8 +156,8 @@ pnpm dev
 | 配置项 | 值 |
 |---|---|
 | Root Directory | `backend` |
-| Build Command | `pip install -r requirements.txt` |
-| Start Command | `uvicorn app.api.main:app --host 0.0.0.0 --port $PORT` |
+| Build Command | `pip install uv && uv pip install -r requirements.txt --system` |
+| Start Command | `python -m uvicorn app.api.main:app --host 0.0.0.0 --port $PORT` |
 
 **环境变量**：
 

@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { TripFormData, TripPlanResponse, AttractionPhotoResponse } from '@/types'
+import { getErrorMessage } from '@/utils/errorMessage'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
@@ -32,10 +33,6 @@ apiClient.interceptors.response.use(
     return Promise.reject(error)
   }
 )
-
-function getErrorMessage(error: any, fallback: string): string {
-  return error.response?.data?.detail || error.message || fallback
-}
 
 /**
  * 生成旅行计划
