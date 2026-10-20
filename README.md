@@ -1,269 +1,201 @@
-# LangChain智能旅行助手 🌍✈️
+# 基于 LangChain 的 Multi-Agent【旅行规划】Demo
 
-基于LangChain框架构建的智能旅行规划助手，集成高德地图MCP服务和MiniMax大模型，提供个性化的旅行计划。
+- **状态：** 功能冻结，只接受文档与保活修复；已实现功能见下一节
+- **记录：** [笔记](docs/NOTES.md)
+- **License：** [MIT](LICENSE.md)
+- **在线：** [Render 部署](https://trip-planner-a9kw.onrender.com)
 
-## ✨ 功能特点
+前后端分离的旅行规划 Demo。后端用 LangChain `create_agent` 串行跑四个 Agent，经高德 MCP 取景点和天气，再整理成多日行程；前端用 Vue 3 展示、编辑并导出。
 
-- 🤖 **AI驱动的旅行规划**: 基于LangChain ReAct Agent架构，4个专业Agent协作生成详细的多日旅程
-- 🗺️ **高德地图集成**: 通过langchain-mcp-adapters接入高德地图服务，支持景点搜索、天气查询
-- 🧠 **智能工具调用**: Agent自动调用MCP工具，获取实时POI和天气信息
-- 🎨 **现代化前端**: Vue3 + TypeScript + Vite，响应式设计，流畅的用户体验
-- 📱 **完整功能**: 包含住宿、交通、餐饮和景点游览时间推荐
+## 已实现功能
 
-## 🏗️ 技术栈
+- 首页表单：城市、日期、交通、住宿、偏好标签、自由文本
+- `POST /api/trip/plan`：景点、天气、酒店三个 Agent 串行调用同一条 MCP stdio 连接，再由无工具的行程规划 Agent 生成 JSON
+- 解析模型输出（含 Markdown 代码块），缺字段时补齐；解析或执行失败时返回占位行程，HTTP 仍为 200
+- `GET /api/poi/photo`：用 Unsplash 按景点名取一张图；未配置密钥时返回空 URL
+- 结果页：概览、预算、每日行程、天气、高德 JS 地图（景点标记，相邻景点用直线连接）
+- 结果页本地编辑，以及导出图片 / PDF
+- 后端 pytest（解析与备用计划）、前端 vitest（表单天数与错误文案），GitHub Actions 同时做前端类型检查和构建
 
-### 后端
-- **框架**: LangChain
-- **LLM**: MiniMax M2.7 (通过OpenAI兼容API)
-- **MCP工具**: langchain-mcp-adapters + amap-mcp-server (高德地图)
-- **API**: FastAPI
+未实现：账号、行程落库、真实路网导航、酒店按住宿偏好筛选、独立的地图 API。
 
-### 前端
-- **框架**: Vue 3 + TypeScript
-- **构建工具**: Vite
-- **UI组件库**: Ant Design Vue
-- **地图服务**: 高德地图 JavaScript API
-- **HTTP客户端**: Axios
+## 技术栈
 
-## 📁 项目结构
+| 技术 | 在本项目中的应用 |
+| --- | --- |
+| Python 3.12 | 后端语言；CI 使用此版本 |
+| [uv](https://docs.astral.sh/uv/) | CI 与 Render 上安装 `backend/requirements.txt` |
+| [LangChain](https://www.langchain.com/) | `create_agent` 组装模型、工具和系统提示 |
+| [langchain-openai](https://python.langchain.com/docs/integrations/chat/openai/) | 以 OpenAI 兼容接口调用 MiniMax |
+| [MCP](https://modelcontextprotocol.io/)（`langchain-mcp-adapters`） | stdio 启动 `amap-mcp-server`，加载高德工具 |
+| [amap-mcp-server](https://github.com/sugarforever/amap-mcp-server) `0.1.11` | 景点搜索 `maps_text_search`、天气 `maps_weather` |
+| FastAPI / uvicorn | `/api/trip/plan`、`/api/poi/photo`、`/docs` |
+| pydantic / pydantic-settings | 请求响应模型与 `.env` |
+| Node.js 22 / pnpm 9 | 前端工具链；CI 使用此版本 |
+| Vue 3 + TypeScript + Vite | 首页与结果页 |
+| Ant Design Vue | 表单、卡片、菜单 |
+| 高德 JS API | 结果页地图 |
+| axios | 调用后端，超时 20 分钟 |
+| vitest / pytest | 单元测试 |
+
+## 项目结构
 
 ```
 trip-planner/
-├── backend/                    # 后端服务
+├── docs/
+│   └── NOTES.md                      # 学习笔记
+├── .github/workflows/ci.yml          # 后端测试 + 前端测试与构建
+├── backend/
 │   ├── app/
-│   │   ├── agents/            # Agent实现
-│   │   │   ├── trip_planner_agent.py
-│   │   │   ├── prompts.py
-│   │   │   ├── parsers.py
-│   │   │   └── fallback.py
-│   │   ├── api/               # FastAPI路由
-│   │   │   ├── main.py
-│   │   │   └── routes/
-│   │   │       ├── trip.py
-│   │   │       └── poi.py
-│   │   ├── services/          # 服务层
-│   │   │   ├── amap_service.py
-│   │   │   ├── llm_service.py
-│   │   │   └── unsplash_service.py
-│   │   ├── models/           # 数据模型
-│   │   │   └── schemas.py
-│   │   └── config.py         # 配置管理
+│   │   ├── agents/
+│   │   │   ├── trip_planner_agent.py # 四个 Agent 的串行编排
+│   │   │   ├── prompts.py            # 提示词与行程 JSON Schema
+│   │   │   ├── parsers.py            # 从模型文本提取并修复 JSON
+│   │   │   └── fallback.py           # 失败时的占位行程
+│   │   ├── api/                      # FastAPI 入口与路由
+│   │   ├── services/
+│   │   │   ├── amap_service.py       # MCP stdio 会话
+│   │   │   ├── llm_service.py        # MiniMax ChatOpenAI
+│   │   │   └── unsplash_service.py   # 景点图片
+│   │   ├── models/schemas.py
+│   │   └── config.py
+│   ├── tests/
 │   ├── requirements.txt
-│   ├── .env.example
-│   └── .gitignore
-├── frontend/                  # 前端应用
-│   ├── src/
-│   │   ├── components/       # Vue组件
-│   │   ├── services/        # API服务
-│   │   ├── types/           # TypeScript类型
-│   │   └── views/          # 页面视图
+│   ├── run.py
+│   └── .env.example
+├── frontend/
+│   ├── src/views/                    # Home.vue、Result.vue
+│   ├── src/services/api.ts
+│   ├── src/utils/                    # 表单与错误文案，含测试
 │   ├── package.json
-│   └── vite.config.ts
-├── .gitignore
+│   ├── pnpm-lock.yaml                # CI 使用这份锁
+│   └── .env.example
+├── LICENSE.md
 └── README.md
 ```
 
-## 🚀 快速开始
+## 快速开始
 
-### 前提条件
+需要 **Python 3.12**、**Node.js 22**、[pnpm 9](https://pnpm.io/)、MiniMax API 密钥，以及高德 Web 服务 Key、Web 端 JS API Key。
 
-- Python 3.10+
-- Node.js 16+
-- pnpm (推荐) 或 npm
-- MiniMax API密钥
-- 高德地图API密钥 (Web服务API和Web端JS API)
+### 1. 克隆并准备环境变量
 
-### 后端安装
+```bash
+git clone https://github.com/cacohe/trip-planner.git
+cd trip-planner
+```
 
-1. 进入后端目录
+后端：
+
 ```bash
 cd backend
-```
-
-2. 安装依赖
-```bash
-pip install -r requirements.txt
-# 或使用 uv
-uv pip install -r requirements.txt
-```
-
-3. 配置环境变量
-```bash
 cp .env.example .env
-# 编辑.env文件，填入你的API密钥
 ```
 
-必需的配置项：
-- `MINIMAX_API_KEY` - MiniMax API密钥
-- `MINIMAX_BASE_URL` - MiniMax API地址 (默认: https://api.minimaxi.com/v1)
-- `MINIMAX_MODEL` - 模型名称 (默认: MiniMax-M2.7)
-- `AMAP_API_KEY` - 高德地图Web服务API密钥
+Windows PowerShell 可用 `Copy-Item .env.example .env`。
 
-4. 启动后端服务
-```bash
-uvicorn app.api.main:app --reload --host 0.0.0.0 --port 8000
-```
+| 环境变量 | 用途 |
+| --- | --- |
+| `MINIMAX_API_KEY` | MiniMax；缺失时进程仍能启动，第一次规划会失败并走备用计划 |
+| `MINIMAX_BASE_URL` | 默认 `https://api.minimaxi.com/v1` |
+| `MINIMAX_MODEL` | 默认 `MiniMax-M2.7` |
+| `AMAP_API_KEY` | 高德 Web 服务 Key；缺失时启动直接失败 |
+| `UNSPLASH_ACCESS_KEY` | 景点图片，可留空 |
+| `CORS_ORIGINS` | 允许的前端源，逗号分隔 |
 
-### 前端安装
+前端：
 
-1. 进入前端目录
 ```bash
 cd frontend
+cp .env.example .env
 ```
 
-2. 安装依赖
+| 环境变量 | 用途 |
+| --- | --- |
+| `VITE_API_BASE_URL` | 后端地址，本地默认 `http://localhost:8000` |
+| `VITE_AMAP_WEB_JS_KEY` | 高德 Web 端 JS API Key，结果页地图使用 |
+| `VITE_AMAP_WEB_KEY` | 示例文件中的 Web 服务 Key 字段；当前地图加载只用 JS Key |
+
+### 2. 安装并启动
+
+后端（在 `backend/`）：
+
+```bash
+uv pip install -r requirements.txt --system
+python -m uvicorn app.api.main:app --host 0.0.0.0 --port 8000
+```
+
+也可以 `python run.py`，它读取 `HOST` / `PORT`。接口文档在 `http://localhost:8000/docs`。
+
+前端（在 `frontend/`）：
+
 ```bash
 pnpm install
-```
-
-3. 配置环境变量
-```bash
-cp .env.example .env
-# 编辑.env文件，填入高德地图Web端JS API Key
-```
-
-必需的配置项：
-- `VITE_AMAP_WEB_JS_KEY` - 高德地图Web端JS API Key
-
-4. 启动开发服务器
-```bash
 pnpm dev
 ```
 
-5. 打开浏览器访问 `http://localhost:5173`
+浏览器打开 `http://localhost:5173`。
 
-## 🌐 Render 部署
+## 常用命令
 
-本项目前后端分离：前端为 Vite 构建的静态 SPA，后端为 FastAPI API 服务。在 [Render](https://render.com) 上推荐使用 **1 个 Web Service（后端）+ 1 个 Static Site（前端）** 部署；
+```bash
+# backend/
+uv pip install -r requirements.txt --system
+python -m compileall app
+python -m pytest tests/ -q
+
+# frontend/
+pnpm install --frozen-lockfile
+pnpm test
+pnpm build
+```
+
+后端测试覆盖 JSON 提取、行程修补和备用计划，不调用 MiniMax，也不启动 MCP。前端测试覆盖天数计算和错误文案。
+
+## CI
+
+`.github/workflows/ci.yml` 在 `main` 的 push 和 pull request 上运行：
+
+- 后端：Python 3.12，`uv pip install -r requirements.txt --system`，`compileall`，`pytest`
+- 前端：Node.js 22、pnpm 9，`pnpm install --frozen-lockfile`，`pnpm test`，`pnpm build`（含 `vue-tsc`）
+
+## Render 部署
+
+现有线上环境是 **1 个 Web Service（后端）+ 1 个 Static Site（前端）**。首页记录在仓库 About 里。
 
 ### Static Site（前端）
 
 | 配置项 | 值 |
-|---|---|
+| --- | --- |
 | Root Directory | `frontend` |
 | Build Command | `pnpm install && pnpm build` |
 | Publish Directory | `dist` |
 
-**环境变量**（构建时生效）：
-
-| 变量 | 说明 |
-|---|---|
-| `VITE_API_BASE_URL` | 后端 Web Service 的 URL，例如 `https://your-backend.onrender.com` |
-| `VITE_AMAP_WEB_JS_KEY` | 高德地图 Web 端（JS API）Key |
+构建期环境变量：`VITE_API_BASE_URL`（后端 Web Service 的 URL）、`VITE_AMAP_WEB_JS_KEY`。
 
 ### Web Service（后端）
 
 | 配置项 | 值 |
-|---|---|
+| --- | --- |
 | Root Directory | `backend` |
 | Build Command | `pip install uv && uv pip install -r requirements.txt --system` |
 | Start Command | `python -m uvicorn app.api.main:app --host 0.0.0.0 --port $PORT` |
 
-**环境变量**：
+运行期环境变量：`MINIMAX_API_KEY`、`MINIMAX_BASE_URL`、`MINIMAX_MODEL`、`AMAP_API_KEY`、可选的 `UNSPLASH_ACCESS_KEY`、`CORS_ORIGINS`（前端 Static Site 域名）。
 
-| 变量 | 说明 |
-|---|---|
-| `MINIMAX_API_KEY` | MiniMax API 密钥 |
-| `MINIMAX_BASE_URL` | MiniMax API 地址（默认 `https://api.minimaxi.com/v1`） |
-| `MINIMAX_MODEL` | 模型名称（默认 `MiniMax-M2.7`） |
-| `AMAP_API_KEY` | 高德地图 Web 服务 API 密钥 |
-| `UNSPLASH_ACCESS_KEY` | Unsplash 图片服务密钥（可选） |
-| `CORS_ORIGINS` | 前端 Static Site 域名，例如 `https://your-frontend.onrender.com` |
+Render 注入 `PORT`，启动命令使用 `$PORT`。`amap-mcp-server` 已在 `requirements.txt` 中，后端用 `python -m amap_mcp_server` 拉起，不需要再装 `uvx`。免费实例约 15 分钟无请求会休眠；一次规划要串行四次模型调用，耗时和内存都高于普通 CRUD。
 
-> Render 会自动注入 `PORT` 环境变量，启动命令应使用 `$PORT`，不要写死 `8000`。
+## 范围与限制
 
-### 部署注意事项
+- 三个 MCP Agent 必须串行。它们共用一个 stdio 会话，并发会抢同一条连接。
+- 行程规划 Agent 没有工具。景点、天气、酒店的文本原样塞进它的用户消息。
+- 提示词点名的工具只有 `maps_text_search` 和 `maps_weather`。`amap-mcp-server` 还会暴露步行、驾车、公交路线工具，本仓库不调用；地图上的线是前端直线。
+- 景点搜索只用 `preferences` 的第一项，没有偏好时关键词是「景点」。酒店搜索关键词固定为「酒店」，不读取住宿偏好。
+- 备用行程的坐标从北京附近的常数递增，失败时接口仍返回 `success: true`。
+- 结果页的编辑和导出只存在于浏览器，刷新即丢失。
+- 无登录、无数据库。规划器和 MCP 会话都是进程内单例，关闭应用时没有显式结束 MCP 子进程。
+- Python 依赖除 `amap-mcp-server==0.1.11` 外不锁定版本。前端 CI 以 `pnpm-lock.yaml` 为准，仓库里同时留着 `package-lock.json`。
 
-- **MCP 子进程**：后端通过 `python -m amap_mcp_server` 启动高德 MCP 服务，`amap-mcp-server` 已在 `requirements.txt` 中，无需额外安装 `uvx`。
-- **冷启动与超时**：免费档 Web Service 在无请求约 15 分钟后会休眠；行程规划涉及 LLM 多 Agent 调用，耗时较长，注意 Render 请求超时限制。
-- **实例规格**：LangChain Agent + MCP 子进程内存占用较高，免费实例可能吃紧，必要时选择更高规格。
+## License
 
-## 📝 使用指南
-
-1. 在首页填写旅行信息:
-   - 目的地城市
-   - 旅行日期和天数
-   - 交通方式偏好
-   - 住宿偏好
-   - 旅行风格标签
-
-2. 点击"生成旅行计划"按钮
-
-3. 系统将:
-   - 依次调用景点、天气、酒店三个 Agent，再由行程规划 Agent 整合信息
-   - 生成完整的多日行程
-   - 返回每日详细行程、景点地图标记、天气预报、餐饮推荐
-
-4. 查看结果:
-   - 每日详细行程安排
-   - 景点信息与地图标记
-   - 地图路线展示
-   - 天气预报
-   - 餐饮推荐
-
-## 🔧 核心实现
-
-### LangChain Agent架构
-
-```python
-from langchain.agents import create_agent
-from langchain_openai import ChatOpenAI
-
-# 初始化LLM
-llm = ChatOpenAI(
-    model="MiniMax-M2.7",
-    base_url="https://api.minimaxi.com/v1",
-    api_key="your_api_key"
-)
-
-# 创建Agent
-agent = create_agent(
-    model=llm,
-    tools=mcp_tools,  # 从langchain-mcp-adapters加载
-    system_prompt="你是一个专业的旅行规划助手..."
-)
-```
-
-### 多Agent协作流程
-
-1. **景点搜索Agent**: 搜索目的地热门景点
-2. **天气查询Agent**: 查询未来几天的天气预报
-3. **酒店推荐Agent**: 搜索合适的住宿酒店
-4. **行程规划Agent**: 综合以上信息生成完整行程
-
-### MCP工具调用
-
-Agent通过MCP协议调用高德地图服务：
-- `maps_text_search`: 搜索景点POI
-- `maps_weather`: 查询天气
-- `maps_direction_walking_by_address`: 步行路线规划
-- `maps_direction_driving_by_address`: 驾车路线规划
-- `maps_direction_transit_integrated_by_address`: 公共交通路线规划
-
-## 📄 API文档
-
-启动后端服务后，访问 `http://localhost:8000/docs` 查看完整的API文档。
-
-主要端点：
-- `POST /api/trip/plan` - 生成旅行计划
-- `GET /api/poi/photo` - 获取景点图片
-
-## 🤝 贡献指南
-
-欢迎提交Pull Request或Issue！
-
-## 📜 开源协议
-
-MIT License
-
-## 🙏 致谢
-
-- [LangChain](https://github.com/langchain-ai/langchain) - AI应用框架
-- [langchain-mcp-adapters](https://github.com/langchain-ai/langchain-mcp-adapters) - MCP适配器
-- [高德地图开放平台](https://lbs.amap.com/) - 地图服务
-- [amap-mcp-server](https://github.com/sugarforever/amap-mcp-server) - 高德地图MCP服务器
-- [MiniMax](https://www.minimaxi.com/) - 大模型服务
-
----
-
-**LangChain智能旅行助手** - 让旅行计划变得简单而智能 🌈
+[MIT](LICENSE.md)
