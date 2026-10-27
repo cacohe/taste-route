@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from ..config import get_settings, validate_config, print_config
-from .routes import trip, poi
+from .routes import poi, taste, trip
 
 # 获取配置单例
 settings = get_settings()
@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="基于LangChain框架的智能旅行规划助手API",
+    description="Taste-grounded global itinerary planning with Qloo and LangChain",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -61,6 +61,7 @@ app.add_middleware(
 )
 
 app.include_router(trip.router, prefix="/api")
+app.include_router(taste.router, prefix="/api")
 app.include_router(poi.router, prefix="/api")
 
 

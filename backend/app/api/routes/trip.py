@@ -1,52 +1,32 @@
-"""旅行规划API路由 - 处理 /api/trip/* 路径的请求"""
+"""Taste-grounded trip planning endpoint."""
 
-from fastapi import APIRouter, HTTPException
-from ...models.schemas import TripRequest, TripPlanResponse
-from ...agents.trip_planner_agent import get_trip_planner_agent
+from fastapi import APIRouter, Depends, HTTPException
 
-router = APIRouter(prefix="/trip", tags=["旅行规划"])
+from ...agents.taste_route_orchestrator import TasteRouteOrchestrator
+from ...models.schemas import TasteRouteRequest, TasteRouteResponse
+from ...services.candidate_validator import CandidateValidationError
+from ...services.qloo_service import QlooServiceError
+from ..dependencies import get_taste_route_orchestrator
+from ..errors import qloo_http_error
+
+router = APIRouter(prefix="/trip", tags=["trip planning"])
 
 
-@router.post(
-    "/plan",
-    response_model=TripPlanResponse,
-    summary="生成旅行计划",
-    description="根据用户输入的旅行需求,生成详细的旅行计划",
-)
-async def plan_trip(request: TripRequest):
-    """生成旅行计划
-
-    接收用户旅行需求，调用多智能体系统生成完整旅行计划。
-
-    Args:
-        request: TripRequest，包含城市、日期、偏好等旅行需求
-
-    Returns:
-        TripPlanResponse: 包含成功状态、消息和完整旅行计划
-    """
+@router.post("/plan", response_model=TasteRouteResponse)
+async def plan_trip(
+    request: TasteRouteRequest,
+    orchestrator: TasteRouteOrchestrator = Depends(get_taste_route_orchestrator),
+) -> TasteRouteResponse:
     try:
-        print(f"\n{'=' * 60}")
-        print(f"📥 收到旅行规划请求:")
-        print(f"   城市: {request.city}")
-        print(f"   日期: {request.start_date} - {request.end_date}")
-        print(f"   天数: {request.travel_days}")
-        print(f"{'=' * 60}\n")
-
-        agent = get_trip_planner_agent()
-
-        print("🚀 开始生成旅行计划...", flush=True)
-
-        trip_plan = await agent.plan_trip(request)
-
-        print("✅ 旅行计划生成成功,准备返回响应\n", flush=True)
-
-        return TripPlanResponse(
-            success=True, message="旅行计划生成成功", data=trip_plan
-        )
-
-    except Exception as e:
-        print(f"❌ 生成旅行计划失败: {str(e)}")
-        import traceback
-
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"生成旅行计划失败: {str(e)}")
+        return await orchestrator.plan(request)
+    except QlooServiceError as exc:
+        raise qloo_http_error(exc) from exc
+    except CandidateValidationError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error_code": "INVALID_PLAN_PROVENANCE",
+                "message": "The generated itinerary referenced an unavailable place.",
+                "retryable": True,
+            },
+        ) from exc
