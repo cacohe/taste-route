@@ -1,6 +1,6 @@
 """Taste entity discovery endpoints backed by Qloo."""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from ...models.qloo import QlooEntity
@@ -23,6 +23,9 @@ async def search_taste_entities(
     take: int = Query(default=10, ge=1, le=20),
     qloo: QlooService = Depends(get_qloo_service),
 ) -> TasteEntitySearchResponse:
+    q = q.strip()
+    if len(q) < 2:
+        raise HTTPException(status_code=422, detail="Search query must contain at least 2 characters.")
     try:
         items = await qloo.search_entities(q, entity_type, take=take)
     except QlooServiceError as exc:

@@ -31,6 +31,17 @@ def test_validate_candidates_removes_duplicate_ids_in_rank_order():
     assert [candidate.id for candidate in validated] == ["a", "b"]
 
 
+def test_validate_candidates_keeps_later_usable_copy_after_invalid_duplicate():
+    candidates = [
+        _candidate("a", latitude=None),
+        _candidate("a", latitude=40.0, longitude=-73.0),
+    ]
+
+    validated = validate_candidates(candidates, excluded_ids=set())
+
+    assert [candidate.id for candidate in validated] == ["a"]
+
+
 @pytest.mark.parametrize(
     ("latitude", "longitude"), [(None, -73.0), (40.0, None), (None, None)]
 )

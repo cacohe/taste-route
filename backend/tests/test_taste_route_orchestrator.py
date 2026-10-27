@@ -118,6 +118,26 @@ async def test_plan_keeps_resolved_seeds_and_warns_about_unresolved_names():
 
 
 @pytest.mark.anyio
+async def test_plan_returns_partial_result_when_no_seed_can_be_resolved():
+    qloo = FakeQlooService([_candidate("unused")])
+    composer = FakeComposer()
+    orchestrator = TasteRouteOrchestrator(qloo=qloo, composer=composer)
+
+    result = await orchestrator.plan(
+        _request(TasteSeed(name="Unknown Film", entity_type="movie"))
+    )
+
+    assert result.data is not None
+    assert result.data.candidates == []
+    assert result.data.days == []
+    assert result.data.warnings == [
+        "Could not resolve taste seed: Unknown Film",
+        "No taste seeds could be resolved by Qloo.",
+    ]
+    assert composer.called is False
+
+
+@pytest.mark.anyio
 async def test_plan_returns_discovery_result_without_calling_composer_when_no_candidates():
     qloo = FakeQlooService([])
     composer = FakeComposer()
@@ -177,6 +197,71 @@ async def test_plan_rejects_composer_output_with_unknown_place_id():
     orchestrator = TasteRouteOrchestrator(qloo=qloo, composer=composer)
 
     with pytest.raises(CandidateValidationError, match="invented"):
+        await orchestrator.plan(
+            _request(TasteSeed(id="movie-1", name="Blade Runner", entity_type="movie"))
+        )
+
+
+@pytest.mark.anyio
+async def test_plan_rejects_itinerary_day_outside_requested_dates():
+    qloo = FakeQlooService([_candidate("museum")])
+    composer = FakeComposer(
+        [
+            ItineraryDay(
+                date=date(2026, 11, 12),
+                items=[
+                    ItineraryItem(
+                        place_id="museum",
+                        start_time="10:00",
+                        duration_minutes=60,
+                        reason="Valid place on an invalid date.",
+                    )
+                ],
+            )
+        ]
+    )
+    orchestrator = TasteRouteOrchestrator(qloo=qloo, composer=composer)
+
+    with pytest.raises(CandidateValidationError, match="outside the requested trip"):
+        await orchestrator.plan(
+            _request(TasteSeed(id="movie-1", name="Blade Runner", entity_type="movie"))
+        )
+
+
+@pytest.mark.anyio
+async def test_plan_orders_composer_days_chronologically():
+    qloo = FakeQlooService([_candidate("museum")])
+    composer = FakeComposer(
+        [
+            ItineraryDay(date=date(2026, 11, 11), items=[]),
+            ItineraryDay(date=date(2026, 11, 10), items=[]),
+        ]
+    )
+    orchestrator = TasteRouteOrchestrator(qloo=qloo, composer=composer)
+
+    result = await orchestrator.plan(
+        _request(TasteSeed(id="movie-1", name="Blade Runner", entity_type="movie"))
+    )
+
+    assert result.data is not None
+    assert [day.date for day in result.data.days] == [
+        date(2026, 11, 10),
+        date(2026, 11, 11),
+    ]
+
+
+@pytest.mark.anyio
+async def test_plan_rejects_duplicate_itinerary_dates():
+    qloo = FakeQlooService([_candidate("museum")])
+    composer = FakeComposer(
+        [
+            ItineraryDay(date=date(2026, 11, 10), items=[]),
+            ItineraryDay(date=date(2026, 11, 10), items=[]),
+        ]
+    )
+    orchestrator = TasteRouteOrchestrator(qloo=qloo, composer=composer)
+
+    with pytest.raises(CandidateValidationError, match="duplicate itinerary dates"):
         await orchestrator.plan(
             _request(TasteSeed(id="movie-1", name="Blade Runner", entity_type="movie"))
         )

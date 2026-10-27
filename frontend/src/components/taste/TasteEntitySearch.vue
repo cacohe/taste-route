@@ -89,6 +89,9 @@ async function runSearch() {
 
 watch([query, entityType], () => {
   requestVersion += 1
+  results.value = []
+  error.value = ''
+  loading.value = false
   if (timer) clearTimeout(timer)
   timer = setTimeout(runSearch, 300)
 })

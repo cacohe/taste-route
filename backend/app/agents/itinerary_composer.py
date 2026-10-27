@@ -33,7 +33,10 @@ class LangChainItineraryComposer:
                 content=(
                     "Create a practical day-by-day itinerary from the supplied Qloo "
                     "candidates. Do not invent places or place IDs. Respect dates, pace, "
-                    "budget, and constraints. Return only the requested structured output."
+                    "budget, and constraints. Ground every reason only in the candidate's "
+                    "Qloo tags, affinity, contributions, description, and the user's stated "
+                    "constraints; say evidence is limited when those fields are absent. "
+                    "Return only the requested structured output."
                 )
             ),
             HumanMessage(content=json.dumps(payload, ensure_ascii=False)),

@@ -182,21 +182,7 @@ class QlooService:
         geocode = cls._mapping(properties.get("geocode"))
         query = cls._mapping(raw.get("query"))
         explainability = cls._mapping(query.get("explainability"))
-        signals = explainability.get("signals", [])
-        if not isinstance(signals, list):
-            signals = []
-
-        contributions = []
-        for signal in signals:
-            if not isinstance(signal, Mapping) or not signal.get("entity_id"):
-                continue
-            contributions.append(
-                QlooContribution(
-                    entity_id=str(signal["entity_id"]),
-                    name=cls._optional_string(signal.get("name")),
-                    score=cls._optional_float(signal.get("score")),
-                )
-            )
+        contributions = cls._normalize_contributions(explainability)
 
         tags = []
         raw_tags = raw.get("tags", [])
@@ -221,6 +207,46 @@ class QlooService:
             tags=tags,
             contributions=contributions,
         )
+
+    @classmethod
+    def _normalize_contributions(
+        cls, explainability: Mapping[str, Any]
+    ) -> list[QlooContribution]:
+        records: list[tuple[str | None, Any]] = []
+        signals = explainability.get("signals")
+        if isinstance(signals, list):
+            records.extend((None, signal) for signal in signals)
+
+        entity_signals = explainability.get("signal.interests.entities")
+        if isinstance(entity_signals, Mapping):
+            records.extend(
+                (str(entity_id), value)
+                for entity_id, value in entity_signals.items()
+            )
+        elif isinstance(entity_signals, list):
+            records.extend((None, signal) for signal in entity_signals)
+
+        contributions: list[QlooContribution] = []
+        seen: set[str] = set()
+        for entity_id_hint, value in records:
+            signal = value if isinstance(value, Mapping) else {}
+            entity_id = entity_id_hint or cls._optional_string(
+                signal.get("entity_id", signal.get("id"))
+            )
+            if not entity_id or entity_id in seen:
+                continue
+            raw_score = value if isinstance(value, (int, float)) else signal.get(
+                "score", signal.get("weight", signal.get("affinity"))
+            )
+            contributions.append(
+                QlooContribution(
+                    entity_id=entity_id,
+                    name=cls._optional_string(signal.get("name")),
+                    score=cls._optional_float(raw_score),
+                )
+            )
+            seen.add(entity_id)
+        return contributions
 
     @staticmethod
     def _mapping(value: Any) -> Mapping[str, Any]:

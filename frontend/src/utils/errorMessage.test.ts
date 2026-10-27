@@ -15,6 +15,25 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage({ message: 'Network Error' }, 'fallback')).toBe('Network Error')
   })
 
+  it('extracts the public message from a structured API detail', () => {
+    const message = getErrorMessage(
+      {
+        response: {
+          data: {
+            detail: {
+              error_code: 'QLOO_RATE_LIMITED',
+              message: 'Qloo is temporarily rate limited.',
+              retryable: true,
+            },
+          },
+        },
+      },
+      'fallback',
+    )
+
+    expect(message).toBe('Qloo is temporarily rate limited.')
+  })
+
   it('uses provided fallback for unknown errors', () => {
     expect(getErrorMessage(null, '生成旅行计划失败')).toBe('生成旅行计划失败')
   })

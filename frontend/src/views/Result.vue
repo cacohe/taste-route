@@ -75,12 +75,13 @@ import {
 import TasteProfileCard from '@/components/taste/TasteProfileCard.vue'
 import TasteExplanation from '@/components/trip/TasteExplanation.vue'
 import type { PlaceCandidate, TasteRoutePlan } from '@/types/taste'
+import { parseStoredTasteRoutePlan } from '@/utils/tasteRoute'
 
 const router = useRouter()
 const mapContainer = ref<HTMLElement | null>(null)
 const mapError = ref('')
 const raw = sessionStorage.getItem('tasteRoutePlan')
-const plan = ref<TasteRoutePlan | null>(raw ? JSON.parse(raw) as TasteRoutePlan : null)
+const plan = ref<TasteRoutePlan | null>(parseStoredTasteRoutePlan(raw))
 let map: MapLibreMap | null = null
 
 function candidateFor(id: string): PlaceCandidate | null {

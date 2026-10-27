@@ -99,6 +99,14 @@ def test_search_route_returns_safe_auth_error():
     }
 
 
+def test_search_route_rejects_whitespace_only_query():
+    response = _client(qloo=FakeQloo()).get(
+        "/api/taste/entities", params={"q": "   "}
+    )
+
+    assert response.status_code == 422
+
+
 def test_plan_route_returns_orchestrated_response():
     response = _client(orchestrator=FakeOrchestrator()).post(
         "/api/trip/plan",
@@ -139,3 +147,19 @@ def test_plan_route_maps_rate_limit_to_retryable_503():
         "message": "Qloo is temporarily rate limited.",
         "retryable": True,
     }
+
+
+def test_plan_route_rejects_whitespace_only_destination_and_seed_name():
+    response = _client(orchestrator=FakeOrchestrator()).post(
+        "/api/trip/plan",
+        json={
+            "destination": "   ",
+            "start_date": "2026-11-10",
+            "end_date": "2026-11-11",
+            "taste_seeds": [
+                {"id": None, "name": "   ", "entity_type": "movie"}
+            ],
+        },
+    )
+
+    assert response.status_code == 422

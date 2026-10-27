@@ -82,6 +82,7 @@ async def test_composer_requests_structured_days_with_candidate_ids_in_prompt():
     assert "museum" in prompt
     assert "prefer walking" in prompt
     assert "Do not invent" in prompt
+    assert "Ground every reason" in prompt
 
 
 @pytest.mark.anyio
@@ -93,4 +94,15 @@ async def test_composer_maps_model_failure_to_public_safe_error():
         await composer.compose(_request(), [_candidate()])
 
     assert "provider secret" not in str(captured.value)
+
+
+@pytest.mark.anyio
+async def test_composer_maps_invalid_structured_output_to_public_safe_error():
+    model = FakeModel(FakeStructuredModel(result={"unexpected": []}))
+    composer = LangChainItineraryComposer(model)
+
+    with pytest.raises(ItineraryComposerError) as captured:
+        await composer.compose(_request(), [_candidate()])
+
+    assert str(captured.value) == "Itinerary composition is temporarily unavailable."
 

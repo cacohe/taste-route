@@ -56,6 +56,19 @@ describe('TasteEntitySearch', () => {
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   })
 
+  it('hides results from the previous query as soon as input changes', async () => {
+    vi.mocked(searchTasteEntities).mockResolvedValue({ items: [bladeRunner] })
+    const wrapper = mount(TasteEntitySearch, { props: { modelValue: [] } })
+    const input = wrapper.get('[data-test="taste-query"]')
+    await input.setValue('Blade')
+    await vi.advanceTimersByTimeAsync(300)
+    expect(wrapper.find('[data-test="result-movie-1"]').exists()).toBe(true)
+
+    await input.setValue('Arrival')
+
+    expect(wrapper.find('[data-test="result-movie-1"]').exists()).toBe(false)
+  })
+
   it('removes a selected seed', async () => {
     const wrapper = mount(TasteEntitySearch, {
       props: {

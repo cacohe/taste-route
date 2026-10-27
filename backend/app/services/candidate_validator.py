@@ -18,9 +18,9 @@ def validate_candidates(
     for candidate in candidates:
         if candidate.id in seen or candidate.id in excluded_ids:
             continue
-        seen.add(candidate.id)
         if candidate.latitude is None or candidate.longitude is None:
             continue
+        seen.add(candidate.id)
         validated.append(candidate)
     return validated
 

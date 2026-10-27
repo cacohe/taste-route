@@ -13,6 +13,7 @@ from ..models.schemas import (
     TasteRouteResponse,
 )
 from ..services.candidate_validator import (
+    CandidateValidationError,
     enforce_plan_provenance,
     validate_candidates,
 )
@@ -78,6 +79,20 @@ class TasteRouteOrchestrator:
 
         planned_ids = [item.place_id for day in days for item in day.items]
         enforce_plan_provenance(planned_ids, candidates)
+        invalid_dates = sorted(
+            str(day.date)
+            for day in days
+            if day.date < request.start_date or day.date > request.end_date
+        )
+        if invalid_dates:
+            raise CandidateValidationError(
+                "Plan contains dates outside the requested trip: "
+                + ", ".join(invalid_dates)
+            )
+        dates = [day.date for day in days]
+        if len(dates) != len(set(dates)):
+            raise CandidateValidationError("Plan contains duplicate itinerary dates")
+        days = sorted(days, key=lambda day: day.date)
         return self._response(request, candidates, days, warnings)
 
     async def _resolve_seed_ids(

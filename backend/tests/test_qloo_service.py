@@ -90,6 +90,41 @@ async def test_recommend_places_preserves_coordinates_affinity_and_explainabilit
 
 
 @pytest.mark.anyio
+async def test_recommend_places_normalizes_documented_entity_explainability_map():
+    payload = _fixture("insights.json")
+    entity = payload["results"]["entities"][0]
+    entity["query"]["explainability"] = {
+        "signal.interests.entities": {
+            "movie-blade-runner": {"name": "Blade Runner", "score": 0.72},
+            "artist-vangelis": 0.41,
+        }
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    service = QlooService(
+        api_key="secret-key",
+        base_url="https://hackathon.api.qloo.com",
+        transport=httpx.MockTransport(handler),
+    )
+
+    results = await service.recommend_places(
+        destination="New York",
+        entity_ids=["movie-blade-runner", "artist-vangelis"],
+    )
+
+    assert [item.model_dump() for item in results[0].contributions] == [
+        {
+            "entity_id": "movie-blade-runner",
+            "name": "Blade Runner",
+            "score": 0.72,
+        },
+        {"entity_id": "artist-vangelis", "name": None, "score": 0.41},
+    ]
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("status", "expected_code", "retryable"),
     [(401, "QLOO_AUTH_FAILED", False), (429, "QLOO_RATE_LIMITED", True)],
@@ -147,3 +182,70 @@ async def test_malformed_success_payload_maps_to_controlled_error():
 
     assert captured.value.code == "QLOO_INVALID_RESPONSE"
     assert captured.value.retryable is False
+
+
+@pytest.mark.anyio
+async def test_missing_api_key_fails_before_network_access():
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json=_fixture("search.json"))
+
+    service = QlooService(
+        api_key="",
+        base_url="https://hackathon.api.qloo.com",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(QlooServiceError) as captured:
+        await service.search_entities("Blade Runner")
+
+    assert captured.value.code == "QLOO_NOT_CONFIGURED"
+    assert calls == 0
+
+
+@pytest.mark.anyio
+async def test_server_error_retries_once_then_returns_safe_unavailable():
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(500, json={"message": "internal upstream detail"})
+
+    service = QlooService(
+        api_key="secret-key",
+        base_url="https://hackathon.api.qloo.com",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(QlooServiceError) as captured:
+        await service.search_entities("Blade Runner")
+
+    assert calls == 2
+    assert captured.value.code == "QLOO_UNAVAILABLE"
+    assert "internal upstream detail" not in str(captured.value)
+
+
+@pytest.mark.anyio
+async def test_bad_request_is_not_retried():
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(400, json={"message": "private upstream detail"})
+
+    service = QlooService(
+        api_key="secret-key",
+        base_url="https://hackathon.api.qloo.com",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(QlooServiceError) as captured:
+        await service.search_entities("Blade Runner")
+
+    assert calls == 1
+    assert captured.value.code == "QLOO_REQUEST_REJECTED"

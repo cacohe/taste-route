@@ -61,6 +61,7 @@ import { useRouter } from 'vue-router'
 import TasteEntitySearch from '@/components/taste/TasteEntitySearch.vue'
 import { generateTripPlan } from '@/services/api'
 import type { TasteRouteRequest, TasteSeed } from '@/types/taste'
+import { validateTasteRouteDraft } from '@/utils/tasteRoute'
 
 const router = useRouter()
 const destination = ref('')
@@ -75,18 +76,13 @@ const validationError = ref('')
 
 async function handleSubmit() {
   validationError.value = ''
-  if (!destination.value || !startDate.value || !endDate.value) {
-    validationError.value = '请填写目的地和旅行日期。'
-    return
-  }
-  if (endDate.value < startDate.value) {
-    validationError.value = '结束日期不能早于开始日期。'
-    return
-  }
-  if (!tasteSeeds.value.length) {
-    validationError.value = '请至少选择一个文化品味坐标。'
-    return
-  }
+  const invalid = validateTasteRouteDraft({
+    destination: destination.value,
+    startDate: startDate.value,
+    endDate: endDate.value,
+    tasteSeedCount: tasteSeeds.value.length,
+  })
+  if (invalid) { validationError.value = invalid; return }
 
   const request: TasteRouteRequest = {
     destination: destination.value,
