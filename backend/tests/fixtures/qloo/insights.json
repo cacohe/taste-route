@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "results": {
+    "entities": [
+      {
+        "name": "Museum of the Moving Image",
+        "entity_id": "place-moving-image",
+        "type": "urn:entity",
+        "subtype": "urn:entity:place",
+        "properties": {
+          "address": "36-01 35th Ave, Queens, NY",
+          "description": "A museum devoted to film, television, and digital media.",
+          "image": {"url": "https://images.example/moving-image.jpg"},
+          "geocode": {"latitude": 40.7563, "longitude": -73.9239}
+        },
+        "tags": [
+          {"name": "Film museum", "tag_id": "tag-film-museum"}
+        ],
+        "query": {
+          "affinity": 0.91,
+          "explainability": {
+            "signals": [
+              {"entity_id": "movie-blade-runner", "name": "Blade Runner", "score": 0.72}
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

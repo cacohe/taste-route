@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "results": {
+    "entities": [
+      {
+        "name": "Blade Runner",
+        "entity_id": "movie-blade-runner",
+        "type": "urn:entity",
+        "subtype": "urn:entity:movie",
+        "properties": {
+          "description": "1982 science fiction film",
+          "image": {"url": "https://images.example/blade-runner.jpg"}
+        }
+      }
+    ]
+  }
+}
