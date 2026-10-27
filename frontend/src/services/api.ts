@@ -1,5 +1,10 @@
 import axios from 'axios'
-import type { TripFormData, TripPlanResponse, AttractionPhotoResponse } from '@/types'
+import type { AttractionPhotoResponse } from '@/types'
+import type {
+  TasteEntitySearchResponse,
+  TasteRouteRequest,
+  TasteRouteResponse,
+} from '@/types/taste'
 import { getErrorMessage } from '@/utils/errorMessage'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
@@ -37,13 +42,27 @@ apiClient.interceptors.response.use(
 /**
  * 生成旅行计划
  */
-export async function generateTripPlan(formData: TripFormData): Promise<TripPlanResponse> {
+export async function generateTripPlan(formData: TasteRouteRequest): Promise<TasteRouteResponse> {
   try {
-    const response = await apiClient.post<TripPlanResponse>('/api/trip/plan', formData)
+    const response = await apiClient.post<TasteRouteResponse>('/api/trip/plan', formData)
     return response.data
   } catch (error: any) {
     console.error('生成旅行计划失败:', error)
     throw new Error(getErrorMessage(error, '生成旅行计划失败'))
+  }
+}
+
+export async function searchTasteEntities(
+  query: string,
+  entityType?: string,
+): Promise<TasteEntitySearchResponse> {
+  try {
+    const response = await apiClient.get<TasteEntitySearchResponse>('/api/taste/entities', {
+      params: { q: query, type: entityType },
+    })
+    return response.data
+  } catch (error: unknown) {
+    throw new Error(getErrorMessage(error, 'Qloo 搜索暂时不可用'))
   }
 }
 
