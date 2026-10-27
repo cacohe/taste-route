@@ -3,7 +3,8 @@
 import os
 from pathlib import Path
 from typing import List
-from pydantic_settings import BaseSettings  # Pydantic v2 配置管理
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
 
 # 加载 .env 环境变量文件
@@ -22,8 +23,8 @@ class Settings(BaseSettings):
     """
 
     # ========== 应用基本信息 ==========
-    app_name: str = "LangChain智能旅行助手"
-    app_version: str = "1.0.0"
+    app_name: str = "TasteRoute"
+    app_version: str = "2.0.0"
     debug: bool = False
 
     # ========== 服务器配置 ==========
@@ -48,9 +49,11 @@ class Settings(BaseSettings):
     openai_base_url: str = "https://api.minimaxi.com/v1"
     openai_model: str = "MiniMax-M2.7"
 
-    # ========== 高德地图API配置 ==========
-    # 高德地图API密钥，用于地图服务、MCP工具调用
-    amap_api_key: str = ""
+    # ========== Qloo Taste AI 配置 ==========
+    qloo_api_key: str = ""
+    qloo_api_base_url: str = "https://hackathon.api.qloo.com"
+    qloo_timeout_seconds: float = Field(default=15.0, gt=0, le=60)
+    qloo_max_results: int = Field(default=20, ge=1, le=50)
 
     # ========== Unsplash图片服务配置 ==========
     unsplash_access_key: str = ""
@@ -59,10 +62,11 @@ class Settings(BaseSettings):
     # ========== 日志配置 ==========
     log_level: str = "INFO"
 
-    class Config:
-        env_file = ".env"  # 指定.env文件路径（相对于backend/目录）
-        case_sensitive = False  # 环境变量大小写不敏感
-        extra = "ignore"  # 忽略额外配置项
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
     def get_cors_origins_list(self) -> List[str]:
         """获取CORS origins列表
@@ -89,6 +93,15 @@ class Settings(BaseSettings):
         model = self.minimax_model or self.openai_model
         return {"api_key": api_key, "base_url": base_url, "model": model}
 
+    def get_qloo_config(self) -> dict:
+        """Return bounded server-only configuration for the Qloo client."""
+        return {
+            "api_key": self.qloo_api_key,
+            "base_url": self.qloo_api_base_url.rstrip("/"),
+            "timeout_seconds": self.qloo_timeout_seconds,
+            "max_results": self.qloo_max_results,
+        }
+
 
 # 全局配置单例
 settings = Settings()
@@ -103,7 +116,7 @@ def get_settings() -> Settings:
     return settings
 
 
-def validate_config():
+def validate_config(candidate: Settings | None = None):
     """验证配置完整性
 
     检查必要的配置项是否已设置：
@@ -119,11 +132,12 @@ def validate_config():
     errors = []
     warnings = []
 
-    # 必须配置高德API Key
-    if not settings.amap_api_key:
-        errors.append("AMAP_API_KEY未配置")
+    active_settings = candidate or settings
 
-    llm_config = settings.get_llm_config()
+    if not active_settings.qloo_api_key:
+        errors.append("QLOO_API_KEY未配置")
+
+    llm_config = active_settings.get_llm_config()
     if not llm_config["api_key"]:
         warnings.append("MiniMax API Key未配置，LLM功能可能无法使用")
 
@@ -141,19 +155,21 @@ def validate_config():
     return True
 
 
-def print_config():
+def print_config(candidate: Settings | None = None):
     """打印当前配置概要
 
     用于启动时显示配置状态，便于调试。
     不会显示敏感信息（如API Key）。
     """
-    print(f"应用名称: {settings.app_name}")
-    print(f"版本: {settings.app_version}")
-    print(f"服务器: {settings.host}:{settings.port}")
-    print(f"高德地图API Key: {'已配置' if settings.amap_api_key else '未配置'}")
+    active_settings = candidate or settings
+    print(f"应用名称: {active_settings.app_name}")
+    print(f"版本: {active_settings.app_version}")
+    print(f"服务器: {active_settings.host}:{active_settings.port}")
+    print(f"Qloo API Key: {'已配置' if active_settings.qloo_api_key else '未配置'}")
+    print(f"Qloo Base URL: {active_settings.qloo_api_base_url}")
 
-    llm_config = settings.get_llm_config()
+    llm_config = active_settings.get_llm_config()
     print(f"LLM API Key: {'已配置' if llm_config['api_key'] else '未配置'}")
     print(f"LLM Base URL: {llm_config['base_url']}")
     print(f"LLM Model: {llm_config['model']}")
-    print(f"日志级别: {settings.log_level}")
+    print(f"日志级别: {active_settings.log_level}")

@@ -1,11 +1,12 @@
-# 基于 LangChain 的 Multi-Agent【旅行规划】Demo
+# TasteRoute
 
-- **状态：** 功能冻结，只接受文档与保活修复；已实现功能见下一节
-- **记录：** [笔记](docs/NOTES.md)
+- **状态：** Qloo Agentic Hackathon 参赛项目，正在开发
+- **来源：** 基于作者的 [`trip-planner`](https://github.com/cacohe/trip-planner) 显著改造并保留历史
 - **License：** [MIT](LICENSE.md)
-- **在线：** [Render 部署](https://trip-planner-a9kw.onrender.com)
 
-前后端分离的旅行规划 Demo。后端用 LangChain `create_agent` 串行跑四个 Agent，经高德 MCP 取景点和天气，再整理成多日行程；前端用 Vue 3 展示、编辑并导出。
+TasteRoute 是一个以文化品味为核心的旅行 Agent。用户选择喜欢的电影、音乐、书籍、品牌或地点，Qloo Taste AI 将这些跨领域兴趣映射为目的地中的候选体验；后端只允许通过验证的 Qloo 候选进入行程，并保留每项推荐的来源和解释信息。
+
+当前分支仍在迁移原有界面与接口。尚未完成的 Qloo 实时集成和公开 Demo 不在本 README 中宣称可用。
 
 ## 已实现功能
 

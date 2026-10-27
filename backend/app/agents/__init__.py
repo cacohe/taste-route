@@ -1,5 +1,7 @@
-"""智能体模块"""
+"""TasteRoute agent implementations.
 
-from .trip_planner_agent import MultiAgentTripPlanner, get_trip_planner_agent
+Modules are intentionally not imported eagerly so domain helpers and tests do not
+initialize external agent integrations as a side effect of package import.
+"""
 
-__all__ = ["MultiAgentTripPlanner", "get_trip_planner_agent"]
+__all__: list[str] = []
