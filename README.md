@@ -105,6 +105,7 @@ Fixture-based integration tests do not contact Qloo or the LLM. Live-key validat
 
 ## Documentation
 
+- [`docs/project-introduction.md`](docs/project-introduction.md) — evaluator-facing pitch, workflow, Qloo usage, and demo script
 - [`docs/architecture.md`](docs/architecture.md) — boundaries and failure behavior
 - [`docs/qloo-integration.md`](docs/qloo-integration.md) — exact Qloo usage and provenance
 - [`docs/live-validation.md`](docs/live-validation.md) — live API validation procedure
