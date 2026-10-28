@@ -94,6 +94,21 @@ def test_smoke_retries_transient_network_failure() -> None:
     )
 
 
+def test_smoke_treats_structurally_invalid_health_json_as_not_ready() -> None:
+    times = iter([0, 0, 31])
+
+    with pytest.raises(smoke_test.SmokeCheckError, match="Timed out waiting for deployment"):
+        smoke_test.run_smoke_checks(
+            base_url="https://taste-route.onrender.com",
+            expected_commit="c" * 40,
+            timeout_seconds=30,
+            poll_interval_seconds=0,
+            open_url=lambda _request, timeout: FakeResponse("[]"),
+            monotonic=lambda: next(times),
+            sleep=lambda _seconds: None,
+        )
+
+
 def test_smoke_times_out_when_only_previous_commit_is_live() -> None:
     times = iter([0, 0, 31])
 
@@ -107,6 +122,29 @@ def test_smoke_times_out_when_only_previous_commit_is_live() -> None:
                 json.dumps({"status": "ok", "commit": "e" * 40})
             ),
             monotonic=lambda: next(times),
+            sleep=lambda _seconds: None,
+        )
+
+
+@pytest.mark.parametrize("openapi_payload", ["null", '{"openapi":"3.1.0","paths":null}'])
+def test_smoke_rejects_structurally_invalid_openapi_json(openapi_payload: str) -> None:
+    expected_commit = "f" * 40
+    responses = iter(
+        [
+            FakeResponse(json.dumps({"status": "ok", "commit": expected_commit})),
+            FakeResponse("TasteRoute", content_type="text/html"),
+            FakeResponse(openapi_payload),
+        ]
+    )
+
+    with pytest.raises(smoke_test.SmokeCheckError, match="OpenAPI smoke check"):
+        smoke_test.run_smoke_checks(
+            base_url="https://taste-route.onrender.com",
+            expected_commit=expected_commit,
+            timeout_seconds=30,
+            poll_interval_seconds=0,
+            open_url=lambda _request, timeout: next(responses),
+            monotonic=lambda: 0,
             sleep=lambda _seconds: None,
         )
 

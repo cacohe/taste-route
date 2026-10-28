@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -44,6 +44,8 @@ def run_smoke_checks(
     while True:
         try:
             health = json.loads(_read_text(f"{root}/health", open_url))
+            if not isinstance(health, Mapping):
+                raise SmokeCheckError("Health check JSON must be an object.")
             observed_commit = str(health.get("commit") or "not reported")
             if health.get("status") == "ok" and (
                 not expected_commit or observed_commit == expected_commit
@@ -65,7 +67,9 @@ def run_smoke_checks(
         openapi = json.loads(_read_text(f"{root}/openapi.json", open_url))
     except json.JSONDecodeError as exc:
         raise SmokeCheckError("OpenAPI smoke check returned invalid JSON.") from exc
-    if not openapi.get("openapi") or "/api/trip/plan" not in openapi.get("paths", {}):
+    if not isinstance(openapi, Mapping) or not isinstance(openapi.get("paths"), Mapping):
+        raise SmokeCheckError("OpenAPI smoke check returned an invalid document structure.")
+    if not openapi.get("openapi") or "/api/trip/plan" not in openapi["paths"]:
         raise SmokeCheckError("OpenAPI smoke check did not expose the trip planning route.")
 
 

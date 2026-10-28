@@ -44,6 +44,9 @@ def test_ci_deploys_only_tested_main_pushes_to_render() -> None:
 
     assert workflow["on"]["push"]["branches"] == ["main"]
     assert workflow["on"]["pull_request"]["branches"] == ["main"]
+    assert workflow["concurrency"]["cancel-in-progress"] == (
+        "${{ github.event_name == 'pull_request' }}"
+    )
 
     deploy = workflow["jobs"]["deploy-render"]
     assert deploy["needs"] == ["backend", "frontend", "container"]
