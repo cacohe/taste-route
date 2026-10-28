@@ -1,13 +1,14 @@
 <template>
   <main class="home-shell">
     <section class="hero">
+      <div class="route-motif" aria-hidden="true"><span></span><span></span><span></span></div>
       <p class="eyebrow">QLOO-POWERED TRAVEL AGENT</p>
-      <h1>Travel through the lens<br />of what you already love.</h1>
+      <h1>Travel through the lens of what you already love.</h1>
       <p class="intro">Choose films, artists, books, or places you love. TasteRoute uses Qloo's cultural intelligence to discover real places at your destination, then turns that evidence into a practical itinerary.</p>
     </section>
 
     <form class="planner" :aria-busy="loading" @submit.prevent="handleSubmit">
-      <section>
+      <section class="planner-step">
         <span class="step">01</span>
         <div>
           <h2>Where are you going?</h2>
@@ -19,7 +20,7 @@
         </div>
       </section>
 
-      <section>
+      <section class="planner-step">
         <span class="step">02</span>
         <div>
           <h2>Choose your taste signals</h2>
@@ -28,7 +29,7 @@
         </div>
       </section>
 
-      <section>
+      <section class="planner-step">
         <span class="step">03</span>
         <div>
           <h2>Shape the trip</h2>
@@ -139,23 +140,28 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.home-shell { min-height: 100vh; padding: 64px clamp(20px, 6vw, 92px); color: #241b3a; background: radial-gradient(circle at 85% 8%, #ffe3be 0, transparent 28%), linear-gradient(135deg, #f9f6ef 0%, #eee8ff 100%); }
-.hero { max-width: 850px; margin: 0 auto 42px; }
-.eyebrow { color: #7957ce; font-size: .75rem; font-weight: 800; letter-spacing: .18em; }
-h1 { margin: .4rem 0 1rem; font-family: Georgia, serif; font-size: clamp(2.5rem, 6vw, 5.2rem); line-height: 1.02; font-weight: 500; }
-.intro { max-width: 710px; color: #6d627c; font-size: 1.05rem; line-height: 1.75; }
-.planner { max-width: 1050px; margin: auto; padding: 8px 38px 30px; border: 1px solid rgba(83, 60, 128, .13); border-radius: 24px; background: rgba(255,255,255,.82); box-shadow: 0 28px 80px rgba(50,35,78,.12); backdrop-filter: blur(18px); }
-section { display: grid; grid-template-columns: 56px 1fr; gap: 20px; padding: 30px 0; border-bottom: 1px solid #e8e1ef; }
-section > div { min-width: 0; }
+.home-shell { min-height: 100vh; padding: 42px clamp(20px, 6vw, 92px) 64px; color: #241b3a; background: radial-gradient(circle at 85% 8%, #ffe3be 0, transparent 28%), linear-gradient(135deg, #f9f6ef 0%, #eee8ff 100%); }
+.hero { position: relative; max-width: 980px; margin: 0 auto 30px; padding-right: 120px; }
+.eyebrow { margin: 0; color: #7957ce; font-size: .72rem; font-weight: 800; letter-spacing: .16em; }
+h1 { max-width: 900px; margin: .45rem 0 .8rem; font-family: Georgia, serif; font-size: clamp(2.65rem, 5vw, 4.35rem); line-height: 1.01; font-weight: 500; letter-spacing: -.035em; }
+.intro { max-width: 720px; margin: 0; color: #6d627c; font-size: 1rem; line-height: 1.65; }
+.route-motif { position: absolute; top: 9px; right: 8px; width: 92px; height: 92px; border: 1px solid #b9a8dc; border-left-color: transparent; border-radius: 50%; transform: rotate(-24deg); }
+.route-motif::before { content: ''; position: absolute; inset: 16px; border: 1px dashed #c8b8e5; border-left-color: transparent; border-radius: 50%; }
+.route-motif span { position: absolute; width: 9px; height: 9px; border: 2px solid #fff; border-radius: 50%; background: #6242b3; box-shadow: 0 2px 6px #4e397044; }
+.route-motif span:nth-child(1) { top: 2px; left: 27px; }.route-motif span:nth-child(2) { top: 46px; right: -4px; }.route-motif span:nth-child(3) { bottom: 2px; left: 16px; }
+.planner { max-width: 1050px; margin: auto; padding: 6px 38px 28px; border: 1px solid rgba(83, 60, 128, .13); border-radius: 24px; background: rgba(255,255,255,.86); box-shadow: 0 24px 70px rgba(50,35,78,.11); backdrop-filter: blur(18px); }
+.planner-step { display: grid; grid-template-columns: 56px 1fr; gap: 20px; padding: 26px 0; border-bottom: 1px solid #e8e1ef; }
+.planner-step > div { min-width: 0; }
 .step { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: #2d2144; color: white; font-size: .75rem; }
 h2 { margin: 4px 0 18px; font-size: 1.35rem; }
 .hint, .privacy { color: #776c85; }
 .grid { display: grid; gap: 14px; }.three { grid-template-columns: repeat(3, 1fr); }
 label { display: grid; gap: 7px; color: #665b75; font-size: .82rem; font-weight: 650; }
 input, select { box-sizing: border-box; width: 100%; padding: .82rem .9rem; border: 1px solid #d9d1e3; border-radius: 10px; background: #fff; color: #241b3a; font: inherit; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px solid #bda9ed; outline-offset: 2px; }
 .submit-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-top: 28px; }
 .submit-row p { margin: 0; }.error { color: #a92f47; }
 button { padding: .95rem 1.45rem; border: 0; border-radius: 999px; background: #6242b3; color: white; font-weight: 750; cursor: pointer; white-space: nowrap; }
 button:disabled { opacity: .6; cursor: wait; }
-@media (max-width: 760px) { .home-shell { padding: 34px 14px; } .planner { padding: 4px 18px 24px; } section { grid-template-columns: 1fr; } .three { grid-template-columns: 1fr; } .submit-row { align-items: stretch; flex-direction: column; } }
+@media (max-width: 760px) { .home-shell { padding: 30px 14px 44px; } .hero { padding-right: 0; }.route-motif { display: none; } h1 { font-size: clamp(2.45rem, 12vw, 3.4rem); } .planner { padding: 4px 18px 24px; } .planner-step { grid-template-columns: 1fr; } .three { grid-template-columns: 1fr; } .submit-row { align-items: stretch; flex-direction: column; } }
 </style>

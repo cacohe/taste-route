@@ -40,6 +40,13 @@ describe('Home generation flow', () => {
     sessionStorage.clear()
   })
 
+  it('keeps hero content outside the planner-step grid contract', async () => {
+    const wrapper = await mountHome()
+
+    expect(wrapper.get('.hero').classes()).not.toContain('planner-step')
+    expect(wrapper.findAll('.planner-step')).toHaveLength(3)
+  })
+
   it('renders real streamed progress while generation is pending', async () => {
     vi.mocked(generateTripPlanStream).mockImplementation(async (_request, onProgress) => {
       onProgress({ key: 'taste_resolution', label: 'Resolve taste signals', status: 'completed' })
@@ -51,7 +58,7 @@ describe('Home generation flow', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.get('[aria-label="TasteRoute generation progress"]').exists()).toBe(true)
+    expect(wrapper.find('[aria-label="TasteRoute generation progress"]').exists()).toBe(true)
     expect(wrapper.get('[data-step="qloo_discovery"]').attributes('data-status')).toBe('active')
     expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
     wrapper.unmount()
