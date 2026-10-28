@@ -49,6 +49,44 @@ async def test_search_entities_sends_server_key_and_normalizes_results():
 
 
 @pytest.mark.anyio
+async def test_search_entities_normalizes_live_search_result_shape():
+    payload = {
+        "results": [
+            {
+                "entity_id": "movie-blade-runner",
+                "name": "Blade Runner",
+                "types": ["urn:entity:movie"],
+                "properties": {
+                    "description": "1982 science fiction film",
+                    "image": {"url": "https://images.example/blade-runner.jpg"},
+                },
+            }
+        ]
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    service = QlooService(
+        api_key="secret-key",
+        base_url="https://hackathon.api.qloo.com",
+        transport=httpx.MockTransport(handler),
+    )
+
+    results = await service.search_entities("Blade Runner", "movie")
+
+    assert [entity.model_dump() for entity in results] == [
+        {
+            "id": "movie-blade-runner",
+            "name": "Blade Runner",
+            "entity_type": "movie",
+            "description": "1982 science fiction film",
+            "image_url": "https://images.example/blade-runner.jpg",
+        }
+    ]
+
+
+@pytest.mark.anyio
 async def test_recommend_places_preserves_coordinates_affinity_and_explainability():
     captured_url = ""
 
@@ -87,6 +125,29 @@ async def test_recommend_places_preserves_coordinates_affinity_and_explainabilit
     assert results[0].tags == ["Film museum"]
     assert results[0].contributions[0].entity_id == "movie-blade-runner"
     assert results[0].contributions[0].score == 0.72
+
+
+@pytest.mark.anyio
+async def test_recommend_places_normalizes_live_location_coordinates():
+    payload = _fixture("insights.json")
+    entity = payload["results"]["entities"][0]
+    entity["properties"]["geocode"] = {"city": "Paris"}
+    entity["location"] = {"lat": 48.8566, "lon": 2.3522}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    service = QlooService(
+        api_key="secret-key",
+        base_url="https://hackathon.api.qloo.com",
+        transport=httpx.MockTransport(handler),
+    )
+    results = await service.recommend_places(
+        destination="Paris, France", entity_ids=["movie-blade-runner"]
+    )
+
+    assert results[0].latitude == 48.8566
+    assert results[0].longitude == 2.3522
 
 
 @pytest.mark.anyio

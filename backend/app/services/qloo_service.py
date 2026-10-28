@@ -154,9 +154,12 @@ class QlooService:
     @staticmethod
     def _entities(payload: Mapping[str, Any]) -> list[Mapping[str, Any]]:
         results = payload.get("results")
-        if not isinstance(results, Mapping):
-            raise TypeError("results must be an object")
-        entities = results.get("entities")
+        if isinstance(results, list):
+            entities = results
+        elif isinstance(results, Mapping):
+            entities = results.get("entities")
+        else:
+            raise TypeError("results must be an object or array")
         if not isinstance(entities, list):
             raise TypeError("results.entities must be an array")
         if not all(isinstance(item, Mapping) for item in entities):
@@ -170,7 +173,7 @@ class QlooService:
         return QlooEntity(
             id=cls._required_string(raw, "entity_id"),
             name=cls._required_string(raw, "name"),
-            entity_type=cls._subtype(raw.get("subtype")),
+            entity_type=cls._entity_subtype(raw),
             description=cls._optional_string(properties.get("description")),
             image_url=cls._optional_string(image.get("url")),
         )
@@ -180,6 +183,7 @@ class QlooService:
         properties = cls._mapping(raw.get("properties"))
         image = cls._mapping(properties.get("image"))
         geocode = cls._mapping(properties.get("geocode"))
+        location = cls._mapping(raw.get("location"))
         query = cls._mapping(raw.get("query"))
         explainability = cls._mapping(query.get("explainability"))
         contributions = cls._normalize_contributions(explainability)
@@ -198,10 +202,13 @@ class QlooService:
             description=cls._optional_string(properties.get("description")),
             image_url=cls._optional_string(image.get("url")),
             latitude=cls._optional_float(
-                geocode.get("latitude", geocode.get("lat"))
+                geocode.get("latitude", geocode.get("lat", location.get("lat")))
             ),
             longitude=cls._optional_float(
-                geocode.get("longitude", geocode.get("lng"))
+                geocode.get(
+                    "longitude",
+                    geocode.get("lng", location.get("lon", location.get("lng"))),
+                )
             ),
             affinity=cls._optional_float(query.get("affinity")),
             tags=tags,
@@ -282,6 +289,18 @@ class QlooService:
         if not isinstance(value, str) or not value:
             return "unknown"
         return value.removeprefix("urn:entity:")
+
+    @classmethod
+    def _entity_subtype(cls, raw: Mapping[str, Any]) -> str:
+        subtype = raw.get("subtype")
+        if isinstance(subtype, str) and subtype:
+            return cls._subtype(subtype)
+        types = raw.get("types")
+        if isinstance(types, list):
+            for value in types:
+                if isinstance(value, str) and value.startswith("urn:entity:"):
+                    return cls._subtype(value)
+        return "unknown"
 
     @staticmethod
     def _invalid_response() -> QlooServiceError:
