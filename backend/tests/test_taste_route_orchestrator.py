@@ -12,6 +12,7 @@ from app.models.schemas import (
     ItineraryItem,
     TasteRouteRequest,
     TasteSeed,
+    WorkflowStep,
 )
 from app.services.candidate_validator import CandidateValidationError
 
@@ -60,6 +61,32 @@ class FakeComposer:
     async def compose(self, request, candidates, correction=None):
         self.called = True
         return self.days
+
+
+@pytest.mark.anyio
+async def test_plan_emits_real_workflow_progress_in_order():
+    events: list[WorkflowStep] = []
+    async def collect(step: WorkflowStep) -> None:
+        events.append(step)
+
+    orchestrator = TasteRouteOrchestrator(
+        qloo=FakeQlooService([_candidate("museum")]),
+        composer=FakeComposer(),
+    )
+
+    await orchestrator.plan(
+        _request(TasteSeed(id="movie-1", name="Blade Runner", entity_type="movie")),
+        on_progress=collect,
+    )
+
+    assert [(event.key, event.status) for event in events] == [
+        ("taste_resolution", "active"),
+        ("taste_resolution", "completed"),
+        ("qloo_discovery", "active"),
+        ("qloo_discovery", "completed"),
+        ("itinerary_composition", "active"),
+        ("itinerary_composition", "completed"),
+    ]
 
 
 @pytest.mark.anyio

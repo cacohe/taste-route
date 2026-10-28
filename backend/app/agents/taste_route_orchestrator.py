@@ -1,6 +1,6 @@
 """TasteRoute workflow that keeps Qloo provenance across itinerary composition."""
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Protocol
 from uuid import uuid4
 
@@ -43,6 +43,9 @@ class ItineraryComposerError(RuntimeError):
     pass
 
 
+ProgressCallback = Callable[[WorkflowStep], Awaitable[None]]
+
+
 class TasteRouteOrchestrator:
     def __init__(
         self,
@@ -55,18 +58,29 @@ class TasteRouteOrchestrator:
         self._composer = composer
         self._request_id_factory = request_id_factory or (lambda: str(uuid4()))
 
-    async def plan(self, request: TasteRouteRequest) -> TasteRouteResponse:
+    async def plan(
+        self,
+        request: TasteRouteRequest,
+        on_progress: ProgressCallback | None = None,
+    ) -> TasteRouteResponse:
         trace: list[WorkflowStep] = []
+        await self._emit_progress(on_progress, "taste_resolution", "Resolve taste signals", "active")
         seed_ids, seed_names, warnings = await self._resolve_seed_ids(request)
-        trace.append(WorkflowStep(key="taste_resolution", label="Resolve taste signals", status="completed"))
+        taste_step = WorkflowStep(key="taste_resolution", label="Resolve taste signals", status="completed")
+        trace.append(taste_step)
+        await self._emit_step(on_progress, taste_step)
         if not seed_ids:
             warnings.append("No taste seeds could be resolved by Qloo.")
-            trace.extend([
+            skipped = [
                 WorkflowStep(key="qloo_discovery", label="Discover Qloo places", status="skipped"),
                 WorkflowStep(key="itinerary_composition", label="Compose itinerary", status="skipped"),
-            ])
+            ]
+            trace.extend(skipped)
+            for step in skipped:
+                await self._emit_step(on_progress, step)
             return self._response(request, [], [], warnings, trace)
 
+        await self._emit_progress(on_progress, "qloo_discovery", "Discover Qloo places", "active")
         discovered = await self._qloo.recommend_places(
             destination=request.destination,
             entity_ids=seed_ids,
@@ -76,18 +90,25 @@ class TasteRouteOrchestrator:
             discovered, excluded_ids=set(request.excluded_place_ids)
         )
         candidates = self._name_contributions(candidates, seed_names)
-        trace.append(WorkflowStep(key="qloo_discovery", label="Discover Qloo places", status="completed"))
+        discovery_step = WorkflowStep(key="qloo_discovery", label="Discover Qloo places", status="completed")
+        trace.append(discovery_step)
+        await self._emit_step(on_progress, discovery_step)
         if not candidates:
             warnings.append(
                 "No usable Qloo places were found for this destination and taste profile."
             )
-            trace.append(WorkflowStep(key="itinerary_composition", label="Compose itinerary", status="skipped"))
+            skipped_step = WorkflowStep(key="itinerary_composition", label="Compose itinerary", status="skipped")
+            trace.append(skipped_step)
+            await self._emit_step(on_progress, skipped_step)
             return self._response(request, [], [], warnings, trace)
 
+        await self._emit_progress(on_progress, "itinerary_composition", "Compose itinerary", "active")
         try:
             days = await self._composer.compose(request, candidates)
             days = self._validate_days(request, candidates, days)
-            trace.append(WorkflowStep(key="itinerary_composition", label="Compose itinerary", status="completed"))
+            composition_step = WorkflowStep(key="itinerary_composition", label="Compose itinerary", status="completed")
+            trace.append(composition_step)
+            await self._emit_step(on_progress, composition_step)
         except (ItineraryComposerError, CandidateValidationError) as first_error:
             try:
                 days = await self._composer.compose(
@@ -97,13 +118,37 @@ class TasteRouteOrchestrator:
                 )
                 days = self._validate_days(request, candidates, days)
                 warnings.append("The itinerary required one automatic repair pass.")
-                trace.append(WorkflowStep(key="itinerary_composition", label="Compose itinerary", status="repaired"))
+                repaired_step = WorkflowStep(key="itinerary_composition", label="Compose itinerary", status="repaired")
+                trace.append(repaired_step)
+                await self._emit_step(on_progress, repaired_step)
             except ItineraryComposerError:
                 warnings.append("Itinerary composition is temporarily unavailable.")
-                trace.append(WorkflowStep(key="itinerary_composition", label="Compose itinerary", status="failed"))
+                failed_step = WorkflowStep(key="itinerary_composition", label="Compose itinerary", status="failed")
+                trace.append(failed_step)
+                await self._emit_step(on_progress, failed_step)
                 return self._response(request, candidates, [], warnings, trace)
 
         return self._response(request, candidates, days, warnings, trace)
+
+    @staticmethod
+    async def _emit_progress(
+        callback: ProgressCallback | None,
+        key: str,
+        label: str,
+        status: str,
+    ) -> None:
+        await TasteRouteOrchestrator._emit_step(
+            callback,
+            WorkflowStep(key=key, label=label, status=status),
+        )
+
+    @staticmethod
+    async def _emit_step(
+        callback: ProgressCallback | None,
+        step: WorkflowStep,
+    ) -> None:
+        if callback is not None:
+            await callback(step)
 
     @staticmethod
     def _validate_days(

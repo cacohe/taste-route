@@ -1,4 +1,5 @@
 from datetime import date
+import json
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -10,7 +11,7 @@ from app.api.dependencies import (
 )
 from app.api.routes import taste, trip
 from app.models.qloo import QlooEntity
-from app.models.schemas import TasteProfile, TasteRoutePlan, TasteRouteResponse
+from app.models.schemas import TasteProfile, TasteRoutePlan, TasteRouteResponse, WorkflowStep
 from app.services.qloo_service import QlooServiceError
 from app.services.runtime_controls import DemoControls
 
@@ -58,6 +59,21 @@ class FakeOrchestrator:
 
 class RateLimitedOrchestrator:
     async def plan(self, request):
+        raise QlooServiceError(
+            "QLOO_RATE_LIMITED", "Qloo is temporarily rate limited.", retryable=True
+        )
+
+
+class StreamingOrchestrator(FakeOrchestrator):
+    async def plan(self, request, on_progress=None):
+        if on_progress is not None:
+            await on_progress(WorkflowStep(key="taste_resolution", label="Resolve taste signals", status="active"))
+            await on_progress(WorkflowStep(key="taste_resolution", label="Resolve taste signals", status="completed"))
+        return await super().plan(request)
+
+
+class FailingStreamingOrchestrator:
+    async def plan(self, request, on_progress=None):
         raise QlooServiceError(
             "QLOO_RATE_LIMITED", "Qloo is temporarily rate limited.", retryable=True
         )
@@ -187,6 +203,54 @@ def test_plan_route_maps_rate_limit_to_retryable_503():
         "message": "Qloo is temporarily rate limited.",
         "retryable": True,
     }
+
+
+def test_plan_stream_returns_progress_then_terminal_result():
+    response = _client(orchestrator=StreamingOrchestrator()).post(
+        "/api/trip/plan/stream",
+        json={
+            "destination": "New York",
+            "start_date": "2026-11-10",
+            "end_date": "2026-11-11",
+            "taste_seeds": [
+                {"id": "movie-1", "name": "Blade Runner", "entity_type": "movie"}
+            ],
+        },
+    )
+
+    records = [json.loads(line) for line in response.text.splitlines()]
+
+    assert response.headers["content-type"].startswith("application/x-ndjson")
+    assert [record["type"] for record in records] == ["progress", "progress", "result"]
+    assert records[0]["step"]["status"] == "active"
+    assert records[-1]["response"]["data"]["request_id"] == "request-123"
+
+
+def test_plan_stream_serializes_safe_retryable_error():
+    response = _client(orchestrator=FailingStreamingOrchestrator()).post(
+        "/api/trip/plan/stream",
+        json={
+            "destination": "New York",
+            "start_date": "2026-11-10",
+            "end_date": "2026-11-11",
+            "taste_seeds": [
+                {"id": "movie-1", "name": "Blade Runner", "entity_type": "movie"}
+            ],
+        },
+    )
+
+    records = [json.loads(line) for line in response.text.splitlines()]
+
+    assert records == [
+        {
+            "type": "error",
+            "error": {
+                "error_code": "QLOO_RATE_LIMITED",
+                "message": "Qloo is temporarily rate limited.",
+                "retryable": True,
+            },
+        }
+    ]
 
 
 def test_plan_route_rejects_whitespace_only_destination_and_seed_name():

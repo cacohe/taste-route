@@ -56,7 +56,7 @@ class TasteProfile(BaseModel):
 class WorkflowStep(BaseModel):
     key: str
     label: str
-    status: str = Field(pattern="^(completed|repaired|skipped|failed)$")
+    status: str = Field(pattern="^(active|completed|repaired|skipped|failed)$")
 
 
 class ItineraryItem(BaseModel):
