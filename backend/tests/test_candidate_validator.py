@@ -13,6 +13,7 @@ def _candidate(
     *,
     latitude: float | None = 40.0,
     longitude: float | None = -73.0,
+    tags: list[str] | None = None,
 ) -> PlaceCandidate:
     return PlaceCandidate(
         id=entity_id,
@@ -20,6 +21,7 @@ def _candidate(
         address="New York, NY",
         latitude=latitude,
         longitude=longitude,
+        tags=tags or [],
     )
 
 
@@ -59,6 +61,19 @@ def test_validate_candidates_removes_explicitly_excluded_ids():
     validated = validate_candidates(candidates, excluded_ids={"exclude"})
 
     assert [candidate.id for candidate in validated] == ["keep"]
+
+
+def test_validate_candidates_normalizes_display_tags():
+    candidates = [
+        _candidate(
+            "tagged",
+            tags=[" Themed ", "45 54", "", "THEMED", "Family travel", "0 12"],
+        )
+    ]
+
+    validated = validate_candidates(candidates, excluded_ids=set())
+
+    assert validated[0].tags == ["Themed", "Family travel"]
 
 
 def test_enforce_plan_provenance_rejects_unknown_place_id():

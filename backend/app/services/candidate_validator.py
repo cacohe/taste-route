@@ -9,6 +9,21 @@ class CandidateValidationError(ValueError):
     pass
 
 
+def _normalize_display_tags(tags: Iterable[str]) -> list[str]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for raw_tag in tags:
+        tag = raw_tag.strip()
+        if not tag or all(character.isdigit() or character.isspace() for character in tag):
+            continue
+        key = tag.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(tag)
+    return normalized
+
+
 def validate_candidates(
     candidates: Iterable[PlaceCandidate], *, excluded_ids: set[str]
 ) -> list[PlaceCandidate]:
@@ -21,7 +36,7 @@ def validate_candidates(
         if candidate.latitude is None or candidate.longitude is None:
             continue
         seen.add(candidate.id)
-        validated.append(candidate)
+        validated.append(candidate.model_copy(update={"tags": _normalize_display_tags(candidate.tags)}))
     return validated
 
 
