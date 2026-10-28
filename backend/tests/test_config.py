@@ -9,7 +9,9 @@ def _settings(**overrides) -> Settings:
         "qloo_api_base_url": "https://hackathon.api.qloo.com",
         "qloo_timeout_seconds": 15.0,
         "qloo_max_results": 20,
-        "minimax_api_key": "test-llm-key",
+        "llm_api_key": "test-llm-key",
+        "llm_base_url": "https://llm.example/v1",
+        "llm_model": "test-model",
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)
@@ -33,21 +35,14 @@ def test_validate_config_requires_qloo_key():
 
 def test_validate_config_requires_llm_key():
     with pytest.raises(ValueError, match="LLM API Key"):
-        validate_config(
-            _settings(minimax_api_key="", openai_api_key="")
-        )
+        validate_config(_settings(llm_api_key=""))
 
 
-def test_get_llm_config_uses_complete_openai_triplet_when_minimax_key_is_absent():
-    config = _settings(
-        minimax_api_key="",
-        openai_api_key="openai-key",
-        openai_base_url="https://llm.example/v1",
-        openai_model="test-model",
-    ).get_llm_config()
+def test_get_llm_config_returns_provider_neutral_triplet():
+    config = _settings().get_llm_config()
 
     assert config == {
-        "api_key": "openai-key",
+        "api_key": "test-llm-key",
         "base_url": "https://llm.example/v1",
         "model": "test-model",
     }
@@ -57,7 +52,7 @@ def test_get_llm_config_uses_complete_openai_triplet_when_minimax_key_is_absent(
     "overrides",
     [
         {"qloo_api_base_url": "not-a-url"},
-        {"minimax_base_url": "file:///tmp/model"},
+        {"llm_base_url": "file:///tmp/model"},
     ],
 )
 def test_validate_config_rejects_non_http_service_endpoints(overrides):
@@ -65,14 +60,16 @@ def test_validate_config_rejects_non_http_service_endpoints(overrides):
         validate_config(_settings(**overrides))
 
 
-def test_openai_compatibility_fallback_requires_its_own_endpoint_and_model():
-    with pytest.raises(ValueError, match="LLM (Base URL|Model)"):
-        validate_config(
-            _settings(
-                minimax_api_key="",
-                openai_api_key="openai-key",
-            )
-        )
+def test_legacy_provider_specific_settings_do_not_configure_llm():
+    candidate = Settings(
+        _env_file=None,
+        qloo_api_key="test-qloo-key",
+        minimax_api_key="legacy-minimax-key",
+        openai_api_key="legacy-openai-key",
+    )
+
+    with pytest.raises(ValueError, match="LLM API Key"):
+        validate_config(candidate)
 
 
 def test_print_config_reports_qloo_status_without_secret(capsys):
@@ -87,7 +84,7 @@ def test_print_config_redacts_credentials_embedded_in_endpoint_urls(capsys):
     print_config(
         _settings(
             qloo_api_base_url="https://user:qloo-url-secret@example.test/api?key=hidden",
-            minimax_base_url="https://llm-url-secret@example-llm.test/v1?token=hidden",
+            llm_base_url="https://llm-url-secret@example-llm.test/v1?token=hidden",
         )
     )
 

@@ -30,19 +30,11 @@ class Settings(BaseSettings):
     # 允许的前端域名列表，逗号分隔
     cors_origins: str = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000"
 
-    # ========== MiniMax LLM 配置 ==========
-    # MiniMax API密钥，用于调用MiniMax M2.7模型
-    minimax_api_key: str = ""
-    # MiniMax API地址（OpenAI兼容格式）
-    minimax_base_url: str = "https://api.minimaxi.com/v1"
-    # 使用的模型名称
-    minimax_model: str = "MiniMax-M2.7"
-
-    # ========== 兼容旧版配置的字段 ==========
-    # 为保持向后兼容，保留这些字段（实际使用 MiniMax 配置）
-    openai_api_key: str = ""
-    openai_base_url: str = ""
-    openai_model: str = ""
+    # ========== OpenAI-compatible LLM 配置 ==========
+    # 厂商由服务地址、凭据和模型名决定；应用不内置厂商默认值。
+    llm_api_key: str = ""
+    llm_base_url: str = ""
+    llm_model: str = ""
 
     # ========== Qloo Taste AI 配置 ==========
     qloo_api_key: str = ""
@@ -71,24 +63,11 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.cors_origins.split(",")]
 
     def get_llm_config(self) -> dict:
-        """获取LLM配置字典
-
-        优先使用MiniMax配置，兼容旧版openai字段。
-        用于初始化LangChain ChatOpenAI实例。
-
-        Returns:
-            包含 api_key、base_url、model 的字典
-        """
-        if self.minimax_api_key:
-            return {
-                "api_key": self.minimax_api_key,
-                "base_url": self.minimax_base_url,
-                "model": self.minimax_model,
-            }
+        """Return the provider-neutral OpenAI-compatible LLM configuration."""
         return {
-            "api_key": self.openai_api_key,
-            "base_url": self.openai_base_url,
-            "model": self.openai_model,
+            "api_key": self.llm_api_key,
+            "base_url": self.llm_base_url,
+            "model": self.llm_model,
         }
 
     def get_qloo_config(self) -> dict:

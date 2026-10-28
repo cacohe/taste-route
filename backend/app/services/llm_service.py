@@ -1,4 +1,4 @@
-"""LLM服务模块 - 使用LangChain连接MiniMax大模型"""
+"""Provider-neutral LLM service using an OpenAI-compatible endpoint."""
 
 from typing import Optional
 from langchain_openai import ChatOpenAI  # LangChain OpenAI兼容接口
@@ -12,11 +12,11 @@ _global_llm: Optional[BaseChatModel] = None
 def get_llm() -> BaseChatModel:
     """获取LLM实例（单例模式，延迟初始化）
 
-    首次调用时根据配置创建ChatOpenAI实例，
+    首次调用时根据通用 LLM 配置创建 ChatOpenAI 实例，
     后续调用直接返回缓存的实例。
 
     Returns:
-        LangChain ChatOpenAI实例（配置为MiniMax）
+        LangChain ChatOpenAI 实例
 
     Raises:
         ValueError: 当API Key未配置时抛出
@@ -29,10 +29,9 @@ def get_llm() -> BaseChatModel:
 
         # 验证API Key
         if not llm_config["api_key"]:
-            raise ValueError("MiniMax API Key未配置，请在.env文件中设置MINIMAX_API_KEY")
+            raise ValueError("LLM API Key未配置，请在.env文件中设置LLM_API_KEY")
 
-        # 创建LangChain ChatOpenAI实例
-        # 由于MiniMax API兼容OpenAI格式，可直接使用ChatOpenAI
+        # ChatOpenAI 在这里是协议适配器，不代表绑定 OpenAI 厂商。
         _global_llm = ChatOpenAI(
             model=llm_config["model"],
             base_url=llm_config["base_url"],
@@ -43,8 +42,8 @@ def get_llm() -> BaseChatModel:
             max_retries=3,  # 最多重试3次
         )
 
-        print(f"✅ LLM服务初始化成功")
-        print(f"   Base URL: {llm_config['base_url']}")
+        print("✅ LLM服务初始化成功")
+        print("   Base URL: 已配置")
         print(f"   Model: {llm_config['model']}")
 
     return _global_llm

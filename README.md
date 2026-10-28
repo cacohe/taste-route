@@ -41,7 +41,7 @@ Qloo credentials are server-only. There is no fabricated production fallback: if
 
 ## Local setup
 
-Requirements: Python 3.12+, Node.js 22+, pnpm, a Qloo Hackathon API key, and an OpenAI-compatible LLM key (the current example uses MiniMax).
+Requirements: Python 3.12+, Node.js 22+, pnpm, a Qloo Hackathon API key, and credentials for an OpenAI-compatible LLM endpoint.
 
 ```powershell
 git clone https://github.com/cacohe/taste-route.git
@@ -70,8 +70,8 @@ Open `http://localhost:5173`; backend API docs are at `http://localhost:8000/doc
 | --- | --- |
 | `QLOO_API_KEY` | Qloo Hackathon API credential; never expose it as `VITE_*` |
 | `QLOO_API_BASE_URL` | Defaults to `https://hackathon.api.qloo.com` |
-| `MINIMAX_API_KEY` | Key for the structured itinerary composer |
-| `MINIMAX_BASE_URL` / `MINIMAX_MODEL` | OpenAI-compatible model endpoint and model |
+| `LLM_API_KEY` | Key for the structured itinerary composer |
+| `LLM_BASE_URL` / `LLM_MODEL` | OpenAI-compatible endpoint and model; no provider is selected by default |
 | `CORS_ORIGINS` | Comma-separated frontend origins |
 
 The frontend only needs `VITE_API_BASE_URL` when it is not served through the local Vite proxy.
