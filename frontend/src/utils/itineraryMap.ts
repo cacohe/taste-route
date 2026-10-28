@@ -2,6 +2,14 @@ import type { PlaceCandidate, TasteRoutePlan } from '@/types/taste'
 
 const DAY_COLORS = ['#6342ad', '#d26945', '#25846f', '#b07b19']
 
+export function getDayColor(dayIndex: number): string {
+  return DAY_COLORS[dayIndex % DAY_COLORS.length]
+}
+
+export function itineraryMarkerId(date: string, stopIndex: number, placeId: string): string {
+  return `${date}-${stopIndex}-${placeId}`
+}
+
 export interface ItineraryMapMarker {
   id: string
   placeId: string
@@ -50,7 +58,7 @@ export function buildItineraryMapModel(plan: TasteRoutePlan): ItineraryMapModel 
   const markers: ItineraryMapMarker[] = []
   const routes: ItineraryMapRoute[] = []
   plan.days.forEach((day, dayIndex) => {
-    const color = DAY_COLORS[dayIndex % DAY_COLORS.length]
+    const color = getDayColor(dayIndex)
     const routeCoordinates: Array<[number, number]> = []
     day.items.forEach((item, stopIndex) => {
       const candidate = candidates.get(item.place_id)
@@ -58,7 +66,7 @@ export function buildItineraryMapModel(plan: TasteRoutePlan): ItineraryMapModel 
       if (!candidate || !point) return
       routeCoordinates.push(point)
       markers.push({
-        id: `${day.date}-${stopIndex}-${item.place_id}`,
+        id: itineraryMarkerId(day.date, stopIndex, item.place_id),
         placeId: item.place_id,
         name: candidate.name,
         label: `D${dayIndex + 1}-${stopIndex + 1}`,

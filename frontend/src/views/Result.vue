@@ -33,20 +33,30 @@
             </div>
           </article>
         </div>
-        <article class="map-card">
-          <div ref="mapContainer" class="map" aria-label="MapLibre itinerary map"></div>
-          <p v-if="mapError" class="map-error">{{ mapError }}</p>
-        </article>
+        <ItineraryMap
+          :model="mapModel"
+          :selected-marker-id="selectedMarkerId"
+          @select="selectMarker($event, true)"
+        />
       </div>
 
       <section class="days">
-        <article v-for="(day, dayIndex) in plan.days" :key="day.date" class="day">
+        <article v-for="(day, dayIndex) in plan.days" :key="day.date" class="day" :style="{ '--day-color': getDayColor(dayIndex) }">
           <div class="day-heading">
             <span>DAY {{ String(dayIndex + 1).padStart(2, '0') }}</span>
             <h2>{{ day.date }}</h2>
           </div>
           <div class="stops">
-            <article v-for="item in day.items" :key="`${day.date}-${item.place_id}`" class="stop">
+            <article
+              v-for="(item, itemIndex) in day.items"
+              :key="`${day.date}-${item.place_id}`"
+              class="stop"
+              :class="{ 'is-selected': selectedMarkerId === itineraryMarkerId(day.date, itemIndex, item.place_id) }"
+              :data-marker-id="itineraryMarkerId(day.date, itemIndex, item.place_id)"
+              tabindex="0"
+              @click="selectMarker(itineraryMarkerId(day.date, itemIndex, item.place_id))"
+              @keydown.enter="selectMarker(itineraryMarkerId(day.date, itemIndex, item.place_id))"
+            >
               <div class="time">{{ item.start_time }}</div>
               <div class="stop-body">
                 <template v-if="candidateFor(item.place_id)">
@@ -73,65 +83,37 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import 'maplibre-gl/dist/maplibre-gl.css'
-import type { Map as MapLibreMap } from 'maplibre-gl'
 import TasteProfileCard from '@/components/taste/TasteProfileCard.vue'
 import TasteExplanation from '@/components/trip/TasteExplanation.vue'
+import ItineraryMap from '@/components/trip/ItineraryMap.vue'
 import type { PlaceCandidate, TasteRoutePlan } from '@/types/taste'
 import { parseStoredTasteRoutePlan } from '@/utils/tasteRoute'
-import { getMapStyleUrl } from '@/utils/mapConfig'
+import { buildItineraryMapModel, getDayColor, itineraryMarkerId } from '@/utils/itineraryMap'
 
 const router = useRouter()
-const mapContainer = ref<HTMLElement | null>(null)
-const mapError = ref('')
 const raw = sessionStorage.getItem('tasteRoutePlan')
 const plan = ref<TasteRoutePlan | null>(parseStoredTasteRoutePlan(raw))
-let map: MapLibreMap | null = null
+const selectedMarkerId = ref<string | null>(null)
+const mapModel = computed(() => plan.value
+  ? buildItineraryMapModel(plan.value)
+  : { markers: [], routes: [] })
 
 function candidateFor(id: string): PlaceCandidate | null {
   return plan.value?.candidates.find((candidate) => candidate.id === id) ?? null
 }
 
-async function initMap() {
-  if (!plan.value || !mapContainer.value) return
-  const located = plan.value.candidates.filter(
-    (candidate) => candidate.longitude !== null && candidate.latitude !== null,
-  )
-  if (!located.length) {
-    mapError.value = 'Qloo returned no mappable coordinates.'
-    return
-  }
-  try {
-    const { LngLatBounds, Map, Marker, NavigationControl, Popup } = await import('maplibre-gl')
-    map = new Map({
-      container: mapContainer.value,
-      style: getMapStyleUrl(),
-      center: [located[0].longitude!, located[0].latitude!],
-      zoom: 11,
+function selectMarker(markerId: string, reveal = false) {
+  selectedMarkerId.value = markerId
+  if (reveal) {
+    void nextTick(() => {
+      const card = document.querySelector<HTMLElement>(`[data-marker-id="${CSS.escape(markerId)}"]`)
+      card?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+      card?.focus({ preventScroll: true })
     })
-    map.addControl(new NavigationControl(), 'top-right')
-    const bounds = new LngLatBounds()
-    located.forEach((candidate, index) => {
-      const marker = document.createElement('button')
-      marker.className = 'taste-marker'
-      marker.textContent = String(index + 1)
-      marker.title = candidate.name
-      new Marker({ element: marker })
-        .setLngLat([candidate.longitude!, candidate.latitude!])
-        .setPopup(new Popup({ offset: 20 }).setText(candidate.name))
-        .addTo(map!)
-      bounds.extend([candidate.longitude!, candidate.latitude!])
-    })
-    if (located.length > 1) map.fitBounds(bounds, { padding: 55, maxZoom: 13 })
-  } catch {
-    mapError.value = 'The basemap is temporarily unavailable. Place evidence and coordinates are still preserved.'
   }
 }
-
-onMounted(async () => { await nextTick(); await initMap() })
-onBeforeUnmount(() => map?.remove())
 </script>
 
 <style scoped>
@@ -139,9 +121,9 @@ onBeforeUnmount(() => map?.remove())
 header { display: flex; align-items: flex-start; gap: 32px; max-width: 1250px; margin: auto; }.back { margin-top: 10px; border: 0; background: transparent; color: #6747ac; cursor: pointer; }
 .eyebrow { margin: 0; color: #7656b8; font-size: .72rem; font-weight: 800; letter-spacing: .18em; }h1 { margin: .25rem 0; font: 500 clamp(2.5rem, 5vw, 4.5rem)/1 Georgia, serif; }
 .warnings, .empty-state, .empty-days { max-width: 1180px; margin: 24px auto; padding: 18px 22px; border: 1px solid #eadbb0; border-radius: 14px; background: #fff8df; }.warnings p { margin: .45rem 0 0; }
-.overview { display: grid; grid-template-columns: minmax(280px, .75fr) minmax(420px, 1.5fr); gap: 20px; max-width: 1180px; margin: 34px auto; }.profile-stack { display: grid; gap: 14px; }.trace-card { padding: 18px; border-radius: 14px; background: #fff; box-shadow: 0 12px 32px rgba(50,35,70,.08); }.trace-step { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 9px; margin-top: 10px; font-size: .85rem; }.trace-step small { color: #756a81; text-transform: capitalize; }.status { width: 9px; height: 9px; border-radius: 50%; background: #8a7b9a; }.status.completed { background: #3d9870; }.status.repaired { background: #c98924; }.status.failed { background: #c24b5f; }.map-card { position: relative; min-height: 330px; overflow: hidden; border-radius: 18px; background: #e6e0d7; box-shadow: 0 18px 45px rgba(45,30,80,.12); }.map { width: 100%; height: 100%; min-height: 330px; }.map-error { position: absolute; inset: auto 12px 12px; margin: 0; padding: 10px; border-radius: 8px; background: rgba(255,255,255,.92); }
-.days { max-width: 1000px; margin: 54px auto 0; }.day { display: grid; grid-template-columns: 150px 1fr; gap: 30px; margin-bottom: 55px; }.day-heading span { color: #7757b5; font-size: .75rem; font-weight: 800; letter-spacing: .14em; }.day-heading h2 { margin: .5rem 0; font: 500 1.35rem Georgia, serif; }
+.overview { display: grid; grid-template-columns: minmax(280px, .75fr) minmax(420px, 1.5fr); gap: 20px; max-width: 1180px; margin: 34px auto; }.profile-stack { display: grid; gap: 14px; }.trace-card { padding: 18px; border-radius: 14px; background: #fff; box-shadow: 0 12px 32px rgba(50,35,70,.08); }.trace-step { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 9px; margin-top: 10px; font-size: .85rem; }.trace-step small { color: #756a81; text-transform: capitalize; }.status { width: 9px; height: 9px; border-radius: 50%; background: #8a7b9a; }.status.completed { background: #3d9870; }.status.repaired { background: #c98924; }.status.failed { background: #c24b5f; }
+.days { max-width: 1000px; margin: 54px auto 0; }.day { display: grid; grid-template-columns: 150px 1fr; gap: 30px; margin-bottom: 55px; }.day-heading span { color: var(--day-color); font-size: .75rem; font-weight: 800; letter-spacing: .14em; }.day-heading h2 { margin: .5rem 0; font: 500 1.35rem Georgia, serif; }
 .stops { border-left: 1px solid #cfc5da; }.stop { display: grid; grid-template-columns: 82px 1fr; gap: 15px; margin: 0 0 25px -1px; }.time { padding-top: 7px; color: #675d71; font-size: .86rem; }.stop-body { display: grid; grid-template-columns: 120px 1fr; gap: 18px; padding: 20px; border-radius: 16px; background: white; box-shadow: 0 12px 32px rgba(50,35,70,.08); }.stop-body img { width: 120px; height: 110px; object-fit: cover; border-radius: 10px; }.stop-body h3 { margin: 0 0 .35rem; font-size: 1.2rem; }.address { color: #7a7084; font-size: .85rem; }
-:global(.taste-marker) { width: 29px; height: 29px; border: 2px solid white; border-radius: 50%; background: #6342ad; color: white; font-weight: 800; box-shadow: 0 3px 9px #51436866; cursor: pointer; }
+.stop { border-radius: 16px; cursor: pointer; outline: none; }.stop.is-selected .stop-body { box-shadow: 0 0 0 3px color-mix(in srgb, var(--day-color) 72%, white), 0 16px 38px rgba(50,35,70,.16); }.stop:focus-visible .stop-body { box-shadow: 0 0 0 3px #bda9ed, 0 16px 38px rgba(50,35,70,.16); }
 @media (max-width: 760px) { .overview { grid-template-columns: 1fr; }.day { grid-template-columns: 1fr; }.stop { grid-template-columns: 60px 1fr; }.stop-body { grid-template-columns: 1fr; }.stop-body img { width: 100%; } }
 </style>
