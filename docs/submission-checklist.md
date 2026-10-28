@@ -22,7 +22,7 @@
 - [x] Frontend tests and production build pass.
 - [x] `/health`, `/`, and `/openapi.json` pass `scripts/smoke-test.ps1` against FastAPI serving the production Vue build.
 - [x] Docker image builds successfully in CI.
-- [ ] The latest `main` CI run passes and triggers a Render deployment after the deploy-hook secret is configured.
+- [x] The latest `main` CI run passes and triggers a Render deployment after the deploy-hook secret is configured.
 - [x] Secret scan is clean.
 - [x] Live responses contain no fabricated places or coordinates.
 - [x] Error and partial states are visible and honest.

@@ -57,4 +57,4 @@
 - [x] Add failing tests for mandatory CD configuration and post-deploy smoke wiring.
 - [x] Implement the workflow and documentation changes.
 - [x] Create/configure the Render service and GitHub Action values.
-- [ ] Push `main`, monitor Render to `live`, and verify the automated smoke job succeeds.
+- [x] Push `main`, monitor Render to `live`, and verify the automated smoke job succeeds.
