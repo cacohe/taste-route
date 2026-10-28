@@ -3,8 +3,10 @@ import type {
   TasteEntitySearchResponse,
   TasteRouteRequest,
   TasteRouteResponse,
+  WorkflowStep,
 } from '@/types/taste'
 import { getErrorMessage } from '@/utils/errorMessage'
+import { consumeTripPlanStream } from './tripStream'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -26,6 +28,25 @@ export async function generateTripPlan(formData: TasteRouteRequest): Promise<Tas
   } catch (error: unknown) {
     throw new Error(getErrorMessage(error, 'Could not generate the itinerary.'))
   }
+}
+
+export async function generateTripPlanStream(
+  formData: TasteRouteRequest,
+  onProgress: (step: WorkflowStep) => void,
+  signal?: AbortSignal,
+): Promise<TasteRouteResponse> {
+  const response = await fetch(`${API_BASE_URL.replace(/\/$/, '')}/api/trip/plan/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formData),
+    signal,
+  })
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { detail?: string | { message?: string } } | null
+    const message = typeof payload?.detail === 'string' ? payload.detail : payload?.detail?.message
+    throw new Error(message || 'Could not start itinerary generation.')
+  }
+  return consumeTripPlanStream(response, onProgress)
 }
 
 export async function searchTasteEntities(

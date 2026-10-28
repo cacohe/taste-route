@@ -6,7 +6,7 @@
       <p class="intro">Choose films, artists, books, or places you love. TasteRoute uses Qloo's cultural intelligence to discover real places at your destination, then turns that evidence into a practical itinerary.</p>
     </section>
 
-    <form class="planner" @submit.prevent="handleSubmit">
+    <form class="planner" :aria-busy="loading" @submit.prevent="handleSubmit">
       <section>
         <span class="step">01</span>
         <div>
@@ -44,11 +44,17 @@
         </div>
       </section>
 
+      <GenerationProgress
+        v-if="loading"
+        :events="progressEvents"
+        :elapsed-seconds="elapsedSeconds"
+      />
+
       <div class="submit-row">
         <p v-if="validationError" class="error">{{ validationError }}</p>
         <p v-else class="privacy">Your credentials stay server-side. Every recommendation keeps its Qloo evidence.</p>
         <button type="submit" :disabled="loading">
-          {{ loading ? 'Building your TasteRoute…' : 'Generate TasteRoute →' }}
+          {{ loading ? 'Building your TasteRoute…' : retryAvailable ? 'Try generation again →' : 'Generate TasteRoute →' }}
         </button>
       </div>
     </form>
@@ -56,11 +62,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import TasteEntitySearch from '@/components/taste/TasteEntitySearch.vue'
-import { generateTripPlan } from '@/services/api'
-import type { TasteRouteRequest, TasteSeed } from '@/types/taste'
+import GenerationProgress from '@/components/trip/GenerationProgress.vue'
+import { generateTripPlanStream } from '@/services/api'
+import type { TasteRouteRequest, TasteSeed, WorkflowStep } from '@/types/taste'
 import { validateTasteRouteDraft } from '@/utils/tasteRoute'
 
 const router = useRouter()
@@ -73,6 +80,17 @@ const constraintsText = ref('')
 const tasteSeeds = ref<TasteSeed[]>([])
 const loading = ref(false)
 const validationError = ref('')
+const progressEvents = ref<WorkflowStep[]>([])
+const elapsedSeconds = ref(0)
+const retryAvailable = ref(false)
+let elapsedTimer: ReturnType<typeof setInterval> | null = null
+
+function stopElapsedTimer() {
+  if (elapsedTimer !== null) clearInterval(elapsedTimer)
+  elapsedTimer = null
+}
+
+onBeforeUnmount(stopElapsedTimer)
 
 async function handleSubmit() {
   validationError.value = ''
@@ -96,14 +114,25 @@ async function handleSubmit() {
   }
 
   loading.value = true
+  retryAvailable.value = false
+  progressEvents.value = []
+  elapsedSeconds.value = 0
+  const startedAt = Date.now()
+  elapsedTimer = setInterval(() => {
+    elapsedSeconds.value = Math.max(1, Math.floor((Date.now() - startedAt) / 1000))
+  }, 1000)
   try {
-    const response = await generateTripPlan(request)
+    const response = await generateTripPlanStream(request, (step) => {
+      progressEvents.value.push(step)
+    })
     if (!response.success || !response.data) throw new Error(response.message || 'Could not generate the itinerary.')
     sessionStorage.setItem('tasteRoutePlan', JSON.stringify(response.data))
     await router.push('/result')
   } catch (error) {
     validationError.value = error instanceof Error ? error.message : 'Could not generate the itinerary. Please retry.'
+    retryAvailable.value = true
   } finally {
+    stopElapsedTimer()
     loading.value = false
   }
 }

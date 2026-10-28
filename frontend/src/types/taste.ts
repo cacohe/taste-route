@@ -54,6 +54,12 @@ export interface ItineraryDay {
   items: ItineraryItem[]
 }
 
+export interface WorkflowStep {
+  key: string
+  label: string
+  status: 'active' | 'completed' | 'repaired' | 'skipped' | 'failed'
+}
+
 export interface TasteRoutePlan {
   request_id: string
   destination: string
@@ -63,11 +69,7 @@ export interface TasteRoutePlan {
   candidates: PlaceCandidate[]
   days: ItineraryDay[]
   warnings: string[]
-  trace: Array<{
-    key: string
-    label: string
-    status: 'completed' | 'repaired' | 'skipped' | 'failed'
-  }>
+  trace: WorkflowStep[]
 }
 
 export interface TasteRouteResponse {
