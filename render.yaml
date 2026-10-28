@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: taste-route
+    runtime: docker
+    plan: free
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: 'off'
+    envVars:
+      - key: QLOO_API_KEY
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        sync: false
+      - key: LLM_MODEL
+        sync: false

@@ -112,7 +112,7 @@ The Qloo credential remains server-side. Raw upstream errors and credentials are
 - **Backend:** FastAPI, Pydantic, HTTPX
 - **Frontend:** Vue 3, TypeScript, Vite
 - **Map:** MapLibre GL JS using coordinates supplied by Qloo
-- **Deployment:** Multi-stage Docker image, Railway configuration, GitHub Actions
+- **Deployment:** Multi-stage Docker image, Render Blueprint/CD, retained Railway configuration, GitHub Actions
 - **Testing:** pytest, Vitest, Vue Test Utils, production smoke tests
 
 ## Validation evidence

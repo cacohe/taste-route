@@ -3,7 +3,7 @@ name: CI
 on:
   workflow_dispatch:
   push:
-    branches: [main, feature/taste-route]
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -11,10 +11,14 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: backend
@@ -48,6 +52,7 @@ jobs:
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: frontend
@@ -80,6 +85,7 @@ jobs:
   container:
     name: Container
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [backend, frontend]
 
     steps:
@@ -88,3 +94,25 @@ jobs:
 
       - name: Build production image
         run: docker build --tag taste-route:ci .
+
+  deploy-render:
+    name: Deploy Render
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [backend, frontend, container]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Trigger Render deployment
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python scripts/render_deploy.py

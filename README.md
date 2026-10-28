@@ -81,7 +81,7 @@ The frontend only needs `VITE_API_BASE_URL` when it is not served through the lo
 
 ## Production deployment
 
-The root `Dockerfile` builds Vue and serves its static output from FastAPI. This is the recommended Railway topology because the browser and API remain same-origin. See [`docs/deployment.md`](docs/deployment.md) for exact environment variables, health checks, smoke tests, and rollback notes.
+The root `Dockerfile` builds Vue and serves its static output from FastAPI, keeping the browser and API same-origin on both Render and Railway. `render.yaml` is the primary deployment contract and GitHub Actions triggers Render only after backend, frontend, and container checks pass on `main`; `railway.json` remains available for Railway deployment. See [`docs/deployment.md`](docs/deployment.md) for setup, secrets, health checks, smoke tests, and rollback notes.
 
 ```powershell
 docker build -t taste-route .
@@ -109,7 +109,7 @@ Fixture-based integration tests do not contact Qloo or the LLM. Live-key validat
 - [`docs/architecture.md`](docs/architecture.md) — boundaries and failure behavior
 - [`docs/qloo-integration.md`](docs/qloo-integration.md) — exact Qloo usage and provenance
 - [`docs/live-validation.md`](docs/live-validation.md) — live API validation procedure
-- [`docs/deployment.md`](docs/deployment.md) — Railway single-service deployment and rollback
+- [`docs/deployment.md`](docs/deployment.md) — Render/Railway single-service deployment, CI/CD, and rollback
 - [`docs/submission-checklist.md`](docs/submission-checklist.md) — owner actions before submission
 
 ## Known limitations

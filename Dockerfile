@@ -1,5 +1,8 @@
 FROM node:22-alpine AS frontend-builder
 
+ARG VITE_MAP_STYLE_URL
+ENV VITE_MAP_STYLE_URL=${VITE_MAP_STYLE_URL}
+
 WORKDIR /build/frontend
 RUN corepack enable
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
