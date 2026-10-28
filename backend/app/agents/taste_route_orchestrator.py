@@ -11,6 +11,7 @@ from ..models.schemas import (
     TasteRoutePlan,
     TasteRouteRequest,
     TasteRouteResponse,
+    WorkflowStep,
 )
 from ..services.candidate_validator import (
     CandidateValidationError,
@@ -31,7 +32,10 @@ class QlooPort(Protocol):
 
 class ItineraryComposer(Protocol):
     async def compose(
-        self, request: TasteRouteRequest, candidates: list[PlaceCandidate]
+        self,
+        request: TasteRouteRequest,
+        candidates: list[PlaceCandidate],
+        correction: str | None = None,
     ) -> list[ItineraryDay]: ...
 
 
@@ -52,10 +56,16 @@ class TasteRouteOrchestrator:
         self._request_id_factory = request_id_factory or (lambda: str(uuid4()))
 
     async def plan(self, request: TasteRouteRequest) -> TasteRouteResponse:
-        seed_ids, warnings = await self._resolve_seed_ids(request)
+        trace: list[WorkflowStep] = []
+        seed_ids, seed_names, warnings = await self._resolve_seed_ids(request)
+        trace.append(WorkflowStep(key="taste_resolution", label="Resolve taste signals", status="completed"))
         if not seed_ids:
             warnings.append("No taste seeds could be resolved by Qloo.")
-            return self._response(request, [], [], warnings)
+            trace.extend([
+                WorkflowStep(key="qloo_discovery", label="Discover Qloo places", status="skipped"),
+                WorkflowStep(key="itinerary_composition", label="Compose itinerary", status="skipped"),
+            ])
+            return self._response(request, [], [], warnings, trace)
 
         discovered = await self._qloo.recommend_places(
             destination=request.destination,
@@ -65,18 +75,42 @@ class TasteRouteOrchestrator:
         candidates = validate_candidates(
             discovered, excluded_ids=set(request.excluded_place_ids)
         )
+        candidates = self._name_contributions(candidates, seed_names)
+        trace.append(WorkflowStep(key="qloo_discovery", label="Discover Qloo places", status="completed"))
         if not candidates:
             warnings.append(
                 "No usable Qloo places were found for this destination and taste profile."
             )
-            return self._response(request, [], [], warnings)
+            trace.append(WorkflowStep(key="itinerary_composition", label="Compose itinerary", status="skipped"))
+            return self._response(request, [], [], warnings, trace)
 
         try:
             days = await self._composer.compose(request, candidates)
-        except ItineraryComposerError:
-            warnings.append("Itinerary composition is temporarily unavailable.")
-            return self._response(request, candidates, [], warnings)
+            days = self._validate_days(request, candidates, days)
+            trace.append(WorkflowStep(key="itinerary_composition", label="Compose itinerary", status="completed"))
+        except (ItineraryComposerError, CandidateValidationError) as first_error:
+            try:
+                days = await self._composer.compose(
+                    request,
+                    candidates,
+                    correction=f"Previous output was invalid: {first_error}",
+                )
+                days = self._validate_days(request, candidates, days)
+                warnings.append("The itinerary required one automatic repair pass.")
+                trace.append(WorkflowStep(key="itinerary_composition", label="Compose itinerary", status="repaired"))
+            except ItineraryComposerError:
+                warnings.append("Itinerary composition is temporarily unavailable.")
+                trace.append(WorkflowStep(key="itinerary_composition", label="Compose itinerary", status="failed"))
+                return self._response(request, candidates, [], warnings, trace)
 
+        return self._response(request, candidates, days, warnings, trace)
+
+    @staticmethod
+    def _validate_days(
+        request: TasteRouteRequest,
+        candidates: list[PlaceCandidate],
+        days: list[ItineraryDay],
+    ) -> list[ItineraryDay]:
         planned_ids = [item.place_id for day in days for item in day.items]
         enforce_plan_provenance(planned_ids, candidates)
         invalid_dates = sorted(
@@ -92,26 +126,46 @@ class TasteRouteOrchestrator:
         dates = [day.date for day in days]
         if len(dates) != len(set(dates)):
             raise CandidateValidationError("Plan contains duplicate itinerary dates")
-        days = sorted(days, key=lambda day: day.date)
-        return self._response(request, candidates, days, warnings)
+        return sorted(days, key=lambda day: day.date)
 
     async def _resolve_seed_ids(
         self, request: TasteRouteRequest
-    ) -> tuple[list[str], list[str]]:
+    ) -> tuple[list[str], dict[str, str], list[str]]:
         ids: list[str] = []
+        names: dict[str, str] = {}
         warnings: list[str] = []
         for seed in request.taste_seeds:
             if seed.id:
                 ids.append(seed.id)
+                names[seed.id] = seed.name
                 continue
             results = await self._qloo.search_entities(
                 seed.name, seed.entity_type, take=1
             )
             if results:
                 ids.append(results[0].id)
+                names[results[0].id] = seed.name
             else:
                 warnings.append(f"Could not resolve taste seed: {seed.name}")
-        return list(dict.fromkeys(ids)), warnings
+        return list(dict.fromkeys(ids)), names, warnings
+
+    @staticmethod
+    def _name_contributions(
+        candidates: list[PlaceCandidate], seed_names: dict[str, str]
+    ) -> list[PlaceCandidate]:
+        return [
+            candidate.model_copy(
+                update={
+                    "contributions": [
+                        contribution.model_copy(
+                            update={"name": contribution.name or seed_names.get(contribution.entity_id)}
+                        )
+                        for contribution in candidate.contributions
+                    ]
+                }
+            )
+            for candidate in candidates
+        ]
 
     def _response(
         self,
@@ -119,6 +173,7 @@ class TasteRouteOrchestrator:
         candidates: list[PlaceCandidate],
         days: list[ItineraryDay],
         warnings: list[str],
+        trace: list[WorkflowStep],
     ) -> TasteRouteResponse:
         tags = list(
             dict.fromkeys(tag for candidate in candidates for tag in candidate.tags)
@@ -131,9 +186,10 @@ class TasteRouteOrchestrator:
                 destination=request.destination,
                 start_date=request.start_date,
                 end_date=request.end_date,
-                taste_profile=TasteProfile(tags=tags),
+                taste_profile=TasteProfile(tags=tags, seeds=request.taste_seeds),
                 candidates=candidates,
                 days=days,
                 warnings=warnings,
+                trace=trace,
             ),
         )

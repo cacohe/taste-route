@@ -24,6 +24,7 @@ Live validation records real-provider checks without storing credentials or raw 
 | 2026-10-28 | Temporary invalid Qloo key | Public error contract | Passed; HTTP 502 contained only `QLOO_AUTH_FAILED`, a public message, and `retryable: false` |
 | 2026-10-28 | Local | Provider-neutral LLM itinerary composition | Passed with `deepseek-flash`; Paris produced 2 days/10 items and Tokyo produced 2 days/9 items |
 | 2026-10-28 | Local browser | Complete itinerary + evidence + MapLibre | Passed; Paris rendered two itinerary days, per-stop Qloo evidence, and 20 map markers |
+| 2026-10-28 | Production-shaped local server | FastAPI-served Vue + live Paris regression | Passed; health, homepage, OpenAPI, Qloo search, and plan returned 20 candidates, 2 days, 13 items, and three completed workflow stages |
 
 ## 2026-10-28 observations
 

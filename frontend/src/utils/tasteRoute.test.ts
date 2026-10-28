@@ -46,6 +46,6 @@ describe('validateTasteRouteDraft', () => {
       startDate: '2026-11-01',
       endDate: '2026-12-01',
       tasteSeedCount: 1,
-    })).toBe('旅行日期不能超过 30 天。')
+    })).toBe('Trips cannot exceed 30 days.')
   })
 })

@@ -1,11 +1,11 @@
 <template>
   <article class="profile-card">
     <p class="label">TASTE DNA</p>
-    <h2>你的文化路线画像</h2>
+    <h2>Your cultural route profile</h2>
     <div v-if="tags.length" class="tags">
       <span v-for="tag in tags" :key="tag">{{ tag }}</span>
     </div>
-    <p v-else class="empty">Qloo 没有为这次候选地点返回可展示的标签。</p>
+    <p v-else class="empty">Qloo returned no displayable tags for these places.</p>
   </article>
 </template>
 

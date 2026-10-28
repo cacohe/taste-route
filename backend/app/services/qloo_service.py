@@ -188,12 +188,19 @@ class QlooService:
         explainability = cls._mapping(query.get("explainability"))
         contributions = cls._normalize_contributions(explainability)
 
-        tags = []
+        weighted_tags: list[tuple[float, int, str]] = []
         raw_tags = raw.get("tags", [])
         if isinstance(raw_tags, list):
-            for tag in raw_tags:
+            for position, tag in enumerate(raw_tags):
                 if isinstance(tag, Mapping) and tag.get("name"):
-                    tags.append(str(tag["name"]))
+                    raw_weight = tag.get("weight", tag.get("score", tag.get("affinity", 0)))
+                    try:
+                        weight = float(raw_weight)
+                    except (TypeError, ValueError):
+                        weight = 0
+                    weighted_tags.append((weight, position, str(tag["name"]).strip()))
+        weighted_tags.sort(key=lambda item: (-item[0], item[1]))
+        tags = list(dict.fromkeys(name for _, _, name in weighted_tags if name))[:8]
 
         return PlaceCandidate(
             id=cls._required_string(raw, "entity_id"),

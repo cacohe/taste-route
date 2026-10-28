@@ -6,7 +6,7 @@ from app.agents.taste_route_orchestrator import (
     ItineraryComposerError,
     TasteRouteOrchestrator,
 )
-from app.models.qloo import PlaceCandidate, QlooEntity
+from app.models.qloo import PlaceCandidate, QlooContribution, QlooEntity
 from app.models.schemas import (
     ItineraryDay,
     ItineraryItem,
@@ -57,7 +57,7 @@ class FakeComposer:
         self.days = days or []
         self.called = False
 
-    async def compose(self, request, candidates):
+    async def compose(self, request, candidates, correction=None):
         self.called = True
         return self.days
 
@@ -94,6 +94,8 @@ async def test_plan_builds_taste_profile_and_provenance_safe_itinerary():
     assert result.data is not None
     assert result.data.request_id == "request-123"
     assert result.data.taste_profile.tags == ["Film museum", "Design"]
+    assert result.data.taste_profile.seeds[0].name == "Blade Runner"
+    assert [step.status for step in result.data.trace] == ["completed", "completed", "completed"]
     assert [candidate.id for candidate in result.data.candidates] == ["museum", "cafe"]
     assert result.data.days[0].items[0].place_id == "museum"
     assert qloo.recommended_with == ["movie-1"]
@@ -156,7 +158,7 @@ async def test_plan_returns_discovery_result_without_calling_composer_when_no_ca
 
 
 class FailingComposer(FakeComposer):
-    async def compose(self, request, candidates):
+    async def compose(self, request, candidates, correction=None):
         raise ItineraryComposerError("model unavailable")
 
 
@@ -200,6 +202,48 @@ async def test_plan_rejects_composer_output_with_unknown_place_id():
         await orchestrator.plan(
             _request(TasteSeed(id="movie-1", name="Blade Runner", entity_type="movie"))
         )
+
+
+@pytest.mark.anyio
+async def test_plan_repairs_invalid_first_composition_once():
+    qloo = FakeQlooService([_candidate("known")])
+
+    class RepairingComposer:
+        def __init__(self):
+            self.corrections = []
+
+        async def compose(self, request, candidates, correction=None):
+            self.corrections.append(correction)
+            place_id = "invented" if correction is None else "known"
+            return [
+                ItineraryDay(
+                    date=date(2026, 11, 10),
+                    items=[ItineraryItem(place_id=place_id, start_time="10:00", duration_minutes=60, reason="Grounded choice.")],
+                )
+            ]
+
+    composer = RepairingComposer()
+    result = await TasteRouteOrchestrator(qloo=qloo, composer=composer).plan(
+        _request(TasteSeed(id="movie-1", name="Blade Runner", entity_type="movie"))
+    )
+
+    assert result.data is not None
+    assert result.data.days[0].items[0].place_id == "known"
+    assert composer.corrections[0] is None
+    assert "invented" in composer.corrections[1]
+    assert result.data.trace[-1].status == "repaired"
+
+
+@pytest.mark.anyio
+async def test_plan_replaces_contribution_ids_with_selected_seed_names():
+    candidate = _candidate("museum")
+    candidate.contributions = [QlooContribution(entity_id="movie-1", score=0.8)]
+    result = await TasteRouteOrchestrator(
+        qloo=FakeQlooService([candidate]), composer=FakeComposer()
+    ).plan(_request(TasteSeed(id="movie-1", name="Blade Runner", entity_type="movie")))
+
+    assert result.data is not None
+    assert result.data.candidates[0].contributions[0].name == "Blade Runner"
 
 
 @pytest.mark.anyio

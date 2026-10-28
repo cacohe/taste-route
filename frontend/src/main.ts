@@ -1,6 +1,5 @@
 import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
-import 'maplibre-gl/dist/maplibre-gl.css'
 import App from './App.vue'
 import Home from './views/Home.vue'
 

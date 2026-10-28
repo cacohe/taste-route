@@ -7,6 +7,9 @@ from ..agents.taste_route_orchestrator import TasteRouteOrchestrator
 from ..config import get_settings
 from ..services.llm_service import get_llm
 from ..services.qloo_service import QlooService
+from ..services.runtime_controls import DemoControls
+
+_demo_controls: DemoControls | None = None
 
 
 def get_qloo_service() -> QlooService:
@@ -22,3 +25,17 @@ def get_taste_route_orchestrator(
     composer: LangChainItineraryComposer = Depends(get_itinerary_composer),
 ) -> TasteRouteOrchestrator:
     return TasteRouteOrchestrator(qloo=qloo, composer=composer)
+
+
+def get_demo_controls() -> DemoControls:
+    global _demo_controls
+    if _demo_controls is None:
+        settings = get_settings()
+        _demo_controls = DemoControls(
+            search_limit=settings.search_rate_limit_per_minute,
+            plan_limit=settings.plan_rate_limit_per_minute,
+            plan_concurrency=settings.plan_max_concurrency,
+            search_ttl=settings.search_cache_ttl_seconds,
+            plan_ttl=settings.plan_cache_ttl_seconds,
+        )
+    return _demo_controls

@@ -59,10 +59,15 @@ export interface TasteRoutePlan {
   destination: string
   start_date: string
   end_date: string
-  taste_profile: { tags: string[] }
+  taste_profile: { tags: string[]; seeds: TasteSeed[] }
   candidates: PlaceCandidate[]
   days: ItineraryDay[]
   warnings: string[]
+  trace: Array<{
+    key: string
+    label: string
+    status: 'completed' | 'repaired' | 'skipped' | 'failed'
+  }>
 }
 
 export interface TasteRouteResponse {

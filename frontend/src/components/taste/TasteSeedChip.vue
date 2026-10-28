@@ -6,7 +6,7 @@
       type="button"
       class="remove"
       :data-test="`remove-${seed.id}`"
-      :aria-label="`移除 ${seed.name}`"
+      :aria-label="`Remove ${seed.name}`"
       @click="$emit('remove')"
     >×</button>
   </span>

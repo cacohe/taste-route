@@ -151,6 +151,28 @@ async def test_recommend_places_normalizes_live_location_coordinates():
 
 
 @pytest.mark.anyio
+async def test_recommend_places_sorts_and_bounds_weighted_tags():
+    payload = _fixture("insights.json")
+    entity = payload["results"]["entities"][0]
+    entity["tags"] = [
+        {"name": f"Tag {index}", "weight": index} for index in range(10)
+    ]
+
+    service = QlooService(
+        api_key="secret-key",
+        base_url="https://hackathon.api.qloo.com",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json=payload)
+        ),
+    )
+    results = await service.recommend_places(
+        destination="Paris", entity_ids=["movie-blade-runner"]
+    )
+
+    assert results[0].tags == [f"Tag {index}" for index in range(9, 1, -1)]
+
+
+@pytest.mark.anyio
 async def test_recommend_places_normalizes_documented_entity_explainability_map():
     payload = _fixture("insights.json")
     entity = payload["results"]["entities"][0]

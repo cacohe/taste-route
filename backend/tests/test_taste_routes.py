@@ -3,15 +3,24 @@ from datetime import date
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.dependencies import get_qloo_service, get_taste_route_orchestrator
+from app.api.dependencies import (
+    get_demo_controls,
+    get_qloo_service,
+    get_taste_route_orchestrator,
+)
 from app.api.routes import taste, trip
 from app.models.qloo import QlooEntity
 from app.models.schemas import TasteProfile, TasteRoutePlan, TasteRouteResponse
 from app.services.qloo_service import QlooServiceError
+from app.services.runtime_controls import DemoControls
 
 
 class FakeQloo:
+    def __init__(self):
+        self.calls = 0
+
     async def search_entities(self, query, entity_type=None, *, take=10):
+        self.calls += 1
         return [
             QlooEntity(
                 id="movie-1",
@@ -54,14 +63,26 @@ class RateLimitedOrchestrator:
         )
 
 
-def _client(*, qloo=None, orchestrator=None) -> TestClient:
+def _controls(*, search_limit=30, plan_limit=5) -> DemoControls:
+    return DemoControls(
+        search_limit=search_limit,
+        plan_limit=plan_limit,
+        plan_concurrency=1,
+        search_ttl=60,
+        plan_ttl=60,
+    )
+
+
+def _client(*, qloo=None, orchestrator=None, controls=None) -> TestClient:
     app = FastAPI()
+    active_controls = controls or _controls()
     app.include_router(taste.router, prefix="/api")
     app.include_router(trip.router, prefix="/api")
     if qloo is not None:
         app.dependency_overrides[get_qloo_service] = lambda: qloo
     if orchestrator is not None:
         app.dependency_overrides[get_taste_route_orchestrator] = lambda: orchestrator
+    app.dependency_overrides[get_demo_controls] = lambda: active_controls
     return TestClient(app)
 
 
@@ -82,6 +103,25 @@ def test_search_route_returns_normalized_qloo_entities():
             }
         ]
     }
+
+
+def test_search_route_caches_identical_queries_without_recalling_qloo():
+    qloo = FakeQloo()
+    client = _client(qloo=qloo)
+
+    assert client.get("/api/taste/entities", params={"q": "Blade Runner"}).status_code == 200
+    assert client.get("/api/taste/entities", params={"q": "Blade Runner"}).status_code == 200
+
+    assert qloo.calls == 1
+
+
+def test_search_route_returns_429_after_public_demo_quota():
+    client = _client(qloo=FakeQloo(), controls=_controls(search_limit=1))
+
+    assert client.get("/api/taste/entities", params={"q": "Blade Runner"}).status_code == 200
+    response = client.get("/api/taste/entities", params={"q": "Alien"})
+
+    assert response.status_code == 429
 
 
 def test_search_route_returns_safe_auth_error():

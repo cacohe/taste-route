@@ -48,7 +48,7 @@ describe('TasteExplanation', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('Qloo 依据不可用')
+    expect(wrapper.text()).toContain('Qloo evidence is unavailable')
     expect(wrapper.text()).not.toContain('%')
   })
 })

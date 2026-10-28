@@ -35,12 +35,21 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_base_url: str = ""
     llm_model: str = ""
+    llm_timeout_seconds: float = Field(default=180.0, gt=0, le=600)
+    llm_max_retries: int = Field(default=1, ge=0, le=3)
 
     # ========== Qloo Taste AI 配置 ==========
     qloo_api_key: str = ""
     qloo_api_base_url: str = "https://hackathon.api.qloo.com"
     qloo_timeout_seconds: float = Field(default=15.0, gt=0, le=60)
     qloo_max_results: int = Field(default=20, ge=1, le=50)
+
+    # ========== Public demo safeguards (process-local) ==========
+    search_rate_limit_per_minute: int = Field(default=30, ge=1, le=300)
+    plan_rate_limit_per_minute: int = Field(default=5, ge=1, le=60)
+    plan_max_concurrency: int = Field(default=3, ge=1, le=20)
+    search_cache_ttl_seconds: float = Field(default=600, ge=0, le=3600)
+    plan_cache_ttl_seconds: float = Field(default=900, ge=0, le=3600)
 
     # ========== 日志配置 ==========
     log_level: str = "INFO"

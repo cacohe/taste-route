@@ -4,11 +4,13 @@
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from ..config import get_settings, validate_config, print_config
-from .routes import taste, trip
+from .routes import health, taste, trip
+from .static_site import mount_spa
 
 # 获取配置单例
 settings = get_settings()
@@ -62,6 +64,10 @@ app.add_middleware(
 
 app.include_router(trip.router, prefix="/api")
 app.include_router(taste.router, prefix="/api")
+app.include_router(health.router)
+
+frontend_dist = Path(__file__).resolve().parents[3] / "frontend" / "dist"
+mount_spa(app, frontend_dist)
 
 
 if __name__ == "__main__":

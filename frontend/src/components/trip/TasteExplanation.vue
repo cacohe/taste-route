@@ -3,20 +3,22 @@
     <p class="reason">{{ item.reason }}</p>
     <div class="meta">
       <span v-if="candidate.affinity !== null">Qloo affinity {{ Math.round(candidate.affinity * 100) }}%</span>
-      <span v-for="tag in candidate.tags" :key="tag">{{ tag }}</span>
+      <span v-for="tag in candidate.tags.slice(0, 8)" :key="tag">{{ tag }}</span>
     </div>
-    <p v-if="candidate.contributions.length" class="signals">
-      关联自：{{ candidate.contributions.map((signal) => signal.name || signal.entity_id).join('、') }}
+    <p v-if="namedSignals.length" class="signals">
+      Connected to: {{ namedSignals.join(', ') }}
     </p>
-    <p v-else class="signals">Qloo 未返回可展示的单项贡献信号。</p>
+    <p v-else class="signals">Qloo returned no named contribution signal for this place.</p>
   </div>
-  <div v-else class="unavailable">Qloo 依据不可用；此地点不会在地图上显示。</div>
+  <div v-else class="unavailable">Qloo evidence is unavailable; this place is omitted from the map.</div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { ItineraryItem, PlaceCandidate } from '@/types/taste'
 
-defineProps<{ item: ItineraryItem; candidate: PlaceCandidate | null }>()
+const props = defineProps<{ item: ItineraryItem; candidate: PlaceCandidate | null }>()
+const namedSignals = computed(() => props.candidate?.contributions.flatMap((signal) => signal.name ? [signal.name] : []) ?? [])
 </script>
 
 <style scoped>

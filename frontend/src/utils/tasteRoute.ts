@@ -9,18 +9,18 @@ type TasteRouteDraft = {
 
 export function validateTasteRouteDraft(draft: TasteRouteDraft): string | null {
   if (!draft.destination || !draft.startDate || !draft.endDate) {
-    return '请填写目的地和旅行日期。'
+    return 'Enter a destination and travel dates.'
   }
   const start = Date.parse(`${draft.startDate}T00:00:00Z`)
   const end = Date.parse(`${draft.endDate}T00:00:00Z`)
   if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
-    return '结束日期不能早于开始日期。'
+    return 'The end date cannot be before the start date.'
   }
   if ((end - start) / 86_400_000 >= 30) {
-    return '旅行日期不能超过 30 天。'
+    return 'Trips cannot exceed 30 days.'
   }
   if (draft.tasteSeedCount < 1) {
-    return '请至少选择一个文化品味坐标。'
+    return 'Select at least one taste signal.'
   }
   return null
 }

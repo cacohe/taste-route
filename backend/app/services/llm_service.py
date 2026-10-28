@@ -38,8 +38,8 @@ def get_llm() -> BaseChatModel:
             api_key=llm_config["api_key"],
             temperature=1.0,  # 创造性参数，越高越随机
             max_tokens=None,  # 不限制输出长度
-            timeout=600,  # 10分钟超时（Planner Agent可能很慢）
-            max_retries=3,  # 最多重试3次
+            timeout=settings.llm_timeout_seconds,
+            max_retries=settings.llm_max_retries,
         )
 
         print("✅ LLM服务初始化成功")

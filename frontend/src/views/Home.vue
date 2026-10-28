@@ -2,19 +2,19 @@
   <main class="home-shell">
     <section class="hero">
       <p class="eyebrow">QLOO-POWERED TRAVEL AGENT</p>
-      <h1>从你的品味出发，<br />找到真正对味的城市路线。</h1>
-      <p class="intro">选择你喜欢的电影、艺术家、书或地点。TasteRoute 用 Qloo 的文化关联寻找目的地中的真实地点，再由 AI 组织成可执行行程。</p>
+      <h1>Travel through the lens<br />of what you already love.</h1>
+      <p class="intro">Choose films, artists, books, or places you love. TasteRoute uses Qloo's cultural intelligence to discover real places at your destination, then turns that evidence into a practical itinerary.</p>
     </section>
 
     <form class="planner" @submit.prevent="handleSubmit">
       <section>
         <span class="step">01</span>
         <div>
-          <h2>要去哪里？</h2>
+          <h2>Where are you going?</h2>
           <div class="grid three">
-            <label>目的地<input v-model.trim="destination" required placeholder="例如 Tokyo / Lisbon" /></label>
-            <label>开始日期<input v-model="startDate" required type="date" /></label>
-            <label>结束日期<input v-model="endDate" required type="date" :min="startDate" /></label>
+            <label>Destination<input v-model.trim="destination" required placeholder="Tokyo / Lisbon" /></label>
+            <label>Start date<input v-model="startDate" required type="date" /></label>
+            <label>End date<input v-model="endDate" required type="date" :min="startDate" /></label>
           </div>
         </div>
       </section>
@@ -22,8 +22,8 @@
       <section>
         <span class="step">02</span>
         <div>
-          <h2>告诉我们你的文化坐标</h2>
-          <p class="hint">至少选择一个 Qloo 实体。跨类型组合通常会得到更有意思的路线。</p>
+          <h2>Choose your taste signals</h2>
+          <p class="hint">Select at least one Qloo entity. Mixing categories usually creates a more distinctive route.</p>
           <TasteEntitySearch v-model="tasteSeeds" />
         </div>
       </section>
@@ -31,24 +31,24 @@
       <section>
         <span class="step">03</span>
         <div>
-          <h2>调整旅行节奏</h2>
+          <h2>Shape the trip</h2>
           <div class="grid three">
-            <label>节奏
-              <select v-model="pace"><option value="relaxed">松弛</option><option value="balanced">均衡</option><option value="packed">充实</option></select>
+            <label>Pace
+              <select v-model="pace"><option value="relaxed">Relaxed</option><option value="balanced">Balanced</option><option value="packed">Packed</option></select>
             </label>
-            <label>预算
-              <select v-model="budget"><option value="budget">经济</option><option value="medium">适中</option><option value="comfort">舒适</option></select>
+            <label>Budget
+              <select v-model="budget"><option value="budget">Budget</option><option value="medium">Moderate</option><option value="comfort">Comfort</option></select>
             </label>
-            <label>额外约束<input v-model="constraintsText" placeholder="步行为主、无障碍…" /></label>
+            <label>Extra constraints<input v-model="constraintsText" placeholder="Walkable, accessible…" /></label>
           </div>
         </div>
       </section>
 
       <div class="submit-row">
         <p v-if="validationError" class="error">{{ validationError }}</p>
-        <p v-else class="privacy">Qloo 密钥只保存在服务端；结果会标注推荐依据。</p>
+        <p v-else class="privacy">Your credentials stay server-side. Every recommendation keeps its Qloo evidence.</p>
         <button type="submit" :disabled="loading">
-          {{ loading ? '正在构建你的 TasteRoute…' : '生成 TasteRoute →' }}
+          {{ loading ? 'Building your TasteRoute…' : 'Generate TasteRoute →' }}
         </button>
       </div>
     </form>
@@ -98,11 +98,11 @@ async function handleSubmit() {
   loading.value = true
   try {
     const response = await generateTripPlan(request)
-    if (!response.success || !response.data) throw new Error(response.message || '行程生成失败')
+    if (!response.success || !response.data) throw new Error(response.message || 'Could not generate the itinerary.')
     sessionStorage.setItem('tasteRoutePlan', JSON.stringify(response.data))
     await router.push('/result')
   } catch (error) {
-    validationError.value = error instanceof Error ? error.message : '行程生成失败，请稍后重试。'
+    validationError.value = error instanceof Error ? error.message : 'Could not generate the itinerary. Please retry.'
   } finally {
     loading.value = false
   }

@@ -22,7 +22,10 @@ class LangChainItineraryComposer:
         )
 
     async def compose(
-        self, request: TasteRouteRequest, candidates: list[PlaceCandidate]
+        self,
+        request: TasteRouteRequest,
+        candidates: list[PlaceCandidate],
+        correction: str | None = None,
     ) -> list[ItineraryDay]:
         payload = {
             "request": request.model_dump(mode="json"),
@@ -30,6 +33,7 @@ class LangChainItineraryComposer:
                 candidate.model_dump(mode="json") for candidate in candidates
             ],
             "output_schema": ItineraryComposition.model_json_schema(),
+            "correction": correction,
         }
         messages = [
             SystemMessage(
@@ -39,7 +43,8 @@ class LangChainItineraryComposer:
                     "budget, and constraints. Ground every reason only in the candidate's "
                     "Qloo tags, affinity, contributions, description, and the user's stated "
                     "constraints; say evidence is limited when those fields are absent. "
-                    "Return only a JSON object matching output_schema exactly."
+                    "Return only a JSON object matching output_schema exactly. If a correction "
+                    "is supplied, repair that defect and keep all other valid choices."
                 )
             ),
             HumanMessage(content=json.dumps(payload, ensure_ascii=False)),

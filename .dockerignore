@@ -1,0 +1,17 @@
+.git
+.github
+.idea
+.vscode
+.superpowers
+**/.env
+**/.env.*
+!**/.env.example
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/node_modules
+**/dist
+**/*.pyc
+**/*.log
+docs/superpowers

@@ -50,6 +50,13 @@ class TasteRouteRequest(BaseModel):
 
 class TasteProfile(BaseModel):
     tags: list[str] = Field(default_factory=list)
+    seeds: list[TasteSeed] = Field(default_factory=list)
+
+
+class WorkflowStep(BaseModel):
+    key: str
+    label: str
+    status: str = Field(pattern="^(completed|repaired|skipped|failed)$")
 
 
 class ItineraryItem(BaseModel):
@@ -73,6 +80,7 @@ class TasteRoutePlan(BaseModel):
     candidates: list[PlaceCandidate] = Field(default_factory=list)
     days: list[ItineraryDay] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    trace: list[WorkflowStep] = Field(default_factory=list)
 
 
 class TasteRouteResponse(BaseModel):

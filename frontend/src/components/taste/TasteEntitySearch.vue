@@ -5,20 +5,20 @@
         v-model="query"
         data-test="taste-query"
         type="search"
-        placeholder="搜索一部电影、艺术家、餐厅或地点"
-        aria-label="搜索文化品味"
+        placeholder="Search for a film, artist, book, brand, or place"
+        aria-label="Search taste entities"
       />
-      <select v-model="entityType" aria-label="品味类型">
-        <option value="">全部类型</option>
-        <option value="movie">电影</option>
-        <option value="artist">艺术家</option>
-        <option value="book">书籍</option>
-        <option value="place">地点</option>
-        <option value="brand">品牌</option>
+      <select v-model="entityType" aria-label="Taste category">
+        <option value="">All categories</option>
+        <option value="movie">Film</option>
+        <option value="artist">Artist</option>
+        <option value="book">Book</option>
+        <option value="place">Place</option>
+        <option value="brand">Brand</option>
       </select>
     </div>
 
-    <p v-if="loading" class="status">正在询问 Qloo…</p>
+    <p v-if="loading" class="status">Asking Qloo…</p>
     <p v-else-if="error" class="status error">{{ error }}</p>
     <div v-else-if="results.length" class="results" role="listbox">
       <button
@@ -32,11 +32,11 @@
       >
         <img v-if="entity.image_url" :src="entity.image_url" alt="" />
         <span><strong>{{ entity.name }}</strong><small>{{ entity.entity_type }}</small></span>
-        <span>{{ isSelected(entity.id) ? '已选择' : '添加' }}</span>
+        <span>{{ isSelected(entity.id) ? 'Selected' : 'Add' }}</span>
       </button>
     </div>
 
-    <div v-if="modelValue.length" class="selected" aria-label="已选择的品味">
+    <div v-if="modelValue.length" class="selected" aria-label="Selected taste signals">
       <TasteSeedChip
         v-for="seed in modelValue"
         :key="seed.id ?? `${seed.entity_type}-${seed.name}`"
@@ -80,7 +80,7 @@ async function runSearch() {
   } catch (searchError) {
     if (version === requestVersion) {
       results.value = []
-      error.value = searchError instanceof Error ? searchError.message : '搜索暂时不可用'
+      error.value = searchError instanceof Error ? searchError.message : 'Search is temporarily unavailable.'
     }
   } finally {
     if (version === requestVersion) loading.value = false
