@@ -22,11 +22,13 @@ Live validation records real-provider checks without storing credentials or raw 
 | 2026-10-28 | Local | Qloo Insights: Paris, France and Tokyo, Japan | Passed; 20/20 candidates had coordinates in each destination |
 | 2026-10-28 | Local browser | Vite proxy + partial result + MapLibre | Passed; 20 Paris markers rendered without exposing the Qloo key |
 | 2026-10-28 | Temporary invalid Qloo key | Public error contract | Passed; HTTP 502 contained only `QLOO_AUTH_FAILED`, a public message, and `retryable: false` |
-| 2026-10-28 | Local | Configured LLM itinerary composition | Blocked; provider returned HTTP 401 for the configured key |
+| 2026-10-28 | Local | Provider-neutral LLM itinerary composition | Passed with `deepseek-flash`; Paris produced 2 days/10 items and Tokyo produced 2 days/9 items |
+| 2026-10-28 | Local browser | Complete itinerary + evidence + MapLibre | Passed; Paris rendered two itinerary days, per-stop Qloo evidence, and 20 map markers |
 
 ## 2026-10-28 observations
 
 - Live `/search` returns `results` as an array and exposes entity types through a `types` array. The adapter now supports this shape as well as the documented fixture shape.
 - Live Insights places expose coordinates under top-level `location.lat` / `location.lon`; the adapter now preserves those coordinates.
-- Both tested destinations returned only candidate IDs supplied by Qloo. The composer could not produce itinerary days because the configured LLM credential was rejected before generation.
+- Both tested destinations returned only candidate IDs supplied by Qloo. Every generated date stayed inside the requested range and every itinerary item included a non-empty evidence-grounded reason.
+- The configured endpoint does not support OpenAI's `json_schema` response format. The composer uses the more broadly compatible `json_mode` and supplies the authoritative Pydantic output schema in the prompt before validating the response.
 - No credential value was printed, recorded, committed, or returned to the browser.

@@ -47,9 +47,11 @@ class FakeModel:
     def __init__(self, structured: FakeStructuredModel) -> None:
         self.structured = structured
         self.schema = None
+        self.structured_options = None
 
-    def with_structured_output(self, schema):
+    def with_structured_output(self, schema, **kwargs):
         self.schema = schema
+        self.structured_options = kwargs
         return self.structured
 
 
@@ -83,6 +85,9 @@ async def test_composer_requests_structured_days_with_candidate_ids_in_prompt():
     assert "prefer walking" in prompt
     assert "Do not invent" in prompt
     assert "Ground every reason" in prompt
+    assert "JSON object" in prompt
+    assert "duration_minutes" in prompt
+    assert model.structured_options == {"method": "json_mode"}
 
 
 @pytest.mark.anyio

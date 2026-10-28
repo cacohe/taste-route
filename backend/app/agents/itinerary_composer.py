@@ -17,7 +17,9 @@ class ItineraryComposition(BaseModel):
 
 class LangChainItineraryComposer:
     def __init__(self, model: BaseChatModel) -> None:
-        self._model = model.with_structured_output(ItineraryComposition)
+        self._model = model.with_structured_output(
+            ItineraryComposition, method="json_mode"
+        )
 
     async def compose(
         self, request: TasteRouteRequest, candidates: list[PlaceCandidate]
@@ -27,6 +29,7 @@ class LangChainItineraryComposer:
             "qloo_candidates": [
                 candidate.model_dump(mode="json") for candidate in candidates
             ],
+            "output_schema": ItineraryComposition.model_json_schema(),
         }
         messages = [
             SystemMessage(
@@ -36,7 +39,7 @@ class LangChainItineraryComposer:
                     "budget, and constraints. Ground every reason only in the candidate's "
                     "Qloo tags, affinity, contributions, description, and the user's stated "
                     "constraints; say evidence is limited when those fields are absent. "
-                    "Return only the requested structured output."
+                    "Return only a JSON object matching output_schema exactly."
                 )
             ),
             HumanMessage(content=json.dumps(payload, ensure_ascii=False)),
