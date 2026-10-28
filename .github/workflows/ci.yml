@@ -98,7 +98,7 @@ jobs:
   deploy-render:
     name: Deploy Render
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     needs: [backend, frontend, container]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
@@ -115,4 +115,10 @@ jobs:
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
           GITHUB_SHA: ${{ github.sha }}
-        run: python scripts/render_deploy.py
+        run: python scripts/render_deploy.py --require-hook
+
+      - name: Smoke-test deployed commit
+        env:
+          RENDER_SERVICE_URL: ${{ vars.RENDER_SERVICE_URL }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python scripts/smoke_test.py --base-url "$RENDER_SERVICE_URL" --expected-commit "$GITHUB_SHA" --timeout-seconds 900

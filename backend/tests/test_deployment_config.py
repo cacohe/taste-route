@@ -49,7 +49,11 @@ def test_ci_deploys_only_tested_main_pushes_to_render() -> None:
     assert deploy["needs"] == ["backend", "frontend", "container"]
     assert deploy["if"] == "github.event_name == 'push' && github.ref == 'refs/heads/main'"
     assert deploy["steps"][-1]["env"] == {
-        "RENDER_DEPLOY_HOOK_URL": "${{ secrets.RENDER_DEPLOY_HOOK_URL }}",
+        "RENDER_SERVICE_URL": "${{ vars.RENDER_SERVICE_URL }}",
         "GITHUB_SHA": "${{ github.sha }}",
     }
-    assert deploy["steps"][-1]["run"] == "python scripts/render_deploy.py"
+    assert deploy["steps"][-1]["run"] == (
+        "python scripts/smoke_test.py --base-url \"$RENDER_SERVICE_URL\" "
+        "--expected-commit \"$GITHUB_SHA\" --timeout-seconds 900"
+    )
+    assert deploy["steps"][-2]["run"] == "python scripts/render_deploy.py --require-hook"

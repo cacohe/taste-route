@@ -2,6 +2,8 @@
 
 TasteRoute is a taste-grounded travel agent built for the Qloo Agentic Hackathon. Instead of asking users to pick generic categories, it starts from cultural references they genuinely like—films, artists, books, brands, and places—and uses Qloo to discover relevant experiences in a destination.
 
+**Live demo:** [taste-route-ch14.onrender.com](https://taste-route-ch14.onrender.com)
+
 > Private development repository derived from [`cacohe/trip-planner`](https://github.com/cacohe/trip-planner), with its Git history retained. The product path no longer uses the inherited Amap MCP integration.
 
 ## What works

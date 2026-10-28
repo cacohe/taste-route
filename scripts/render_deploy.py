@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
@@ -31,13 +32,16 @@ def _url_for_commit(hook_url: str, commit_sha: str) -> str:
 def trigger_deploy(
     hook_url: str,
     commit_sha: str,
+    require_hook: bool = False,
     open_url: Callable = urlopen,
 ) -> DeployResult:
     """Trigger Render without ever returning or logging the secret hook URL."""
     if not hook_url.strip():
         return DeployResult(
-            "skipped",
-            "RENDER_DEPLOY_HOOK_URL is not configured; Render deployment was skipped.",
+            "failed" if require_hook else "skipped",
+            "RENDER_DEPLOY_HOOK_URL is not configured; Render deployment cannot proceed."
+            if require_hook
+            else "RENDER_DEPLOY_HOOK_URL is not configured; Render deployment was skipped.",
         )
     if not SHA_PATTERN.fullmatch(commit_sha):
         return DeployResult("failed", "GITHUB_SHA must be a 40-character hexadecimal commit SHA.")
@@ -62,9 +66,13 @@ def trigger_deploy(
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--require-hook", action="store_true")
+    args = parser.parse_args()
     result = trigger_deploy(
         hook_url=os.getenv("RENDER_DEPLOY_HOOK_URL", ""),
         commit_sha=os.getenv("GITHUB_SHA", ""),
+        require_hook=args.require_hook,
     )
     annotation = "error" if result.status == "failed" else "notice"
     print(f"::{annotation}::{result.message}")

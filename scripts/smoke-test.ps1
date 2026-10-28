@@ -1,24 +1,23 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string]$BaseUrl
+    [string]$BaseUrl,
+
+    [string]$ExpectedCommit = "",
+
+    [int]$TimeoutSeconds = 900
 )
 
 $ErrorActionPreference = "Stop"
-$root = $BaseUrl.TrimEnd("/")
-
-$health = Invoke-RestMethod -Uri "$root/health" -Method Get
-if ($health.status -ne "ok") {
-    throw "Health check did not return status=ok."
+$arguments = @(
+    "$PSScriptRoot/smoke_test.py",
+    "--base-url", $BaseUrl,
+    "--timeout-seconds", $TimeoutSeconds
+)
+if ($ExpectedCommit) {
+    $arguments += @("--expected-commit", $ExpectedCommit)
 }
 
-$homepageResponse = Invoke-WebRequest -Uri "$root/" -Method Get
-if ($homepageResponse.StatusCode -ne 200 -or $homepageResponse.Content -notmatch "TasteRoute") {
-    throw "Frontend smoke check failed."
+& python @arguments
+if ($LASTEXITCODE -ne 0) {
+    throw "TasteRoute smoke checks failed with exit code $LASTEXITCODE."
 }
-
-$docs = Invoke-WebRequest -Uri "$root/openapi.json" -Method Get
-if ($docs.StatusCode -ne 200) {
-    throw "OpenAPI smoke check failed."
-}
-
-Write-Host "TasteRoute smoke checks passed for $root"

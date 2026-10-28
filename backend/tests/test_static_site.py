@@ -20,6 +20,15 @@ def test_health_endpoint_reports_ready():
     assert response.json() == {"status": "ok"}
 
 
+def test_health_endpoint_reports_render_commit(monkeypatch):
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "a" * 40)
+
+    response = TestClient(_app()).get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "commit": "a" * 40}
+
+
 def test_mount_spa_is_a_noop_when_build_is_missing(tmp_path: Path):
     app = _app()
 

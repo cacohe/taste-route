@@ -42,6 +42,21 @@ def test_missing_hook_skips_without_network_call() -> None:
     assert calls == []
 
 
+def test_missing_required_hook_fails_without_network_call() -> None:
+    calls = []
+
+    result = render_deploy.trigger_deploy(
+        hook_url="",
+        commit_sha="a" * 40,
+        require_hook=True,
+        open_url=lambda request, timeout: calls.append((request, timeout)),
+    )
+
+    assert result.status == "failed"
+    assert "RENDER_DEPLOY_HOOK_URL" in result.message
+    assert calls == []
+
+
 def test_trigger_pins_commit_and_preserves_existing_query() -> None:
     captured = {}
 

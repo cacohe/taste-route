@@ -2,9 +2,9 @@
 
 ## Repository owner actions
 
-- [ ] Add `QLOO_API_KEY` and LLM secrets to the deployment platform; never commit or paste them into an issue.
+- [x] Add `QLOO_API_KEY` and LLM secrets to the deployment platform; never commit or paste them into an issue.
 - [x] Run and record the live validation procedure.
-- [ ] Create the Render Blueprint, add server secrets, and save its deploy hook as the GitHub Actions secret `RENDER_DEPLOY_HOOK_URL`.
+- [x] Create the Render Blueprint, add server secrets, and save its deploy hook as the GitHub Actions secret `RENDER_DEPLOY_HOOK_URL`.
 - [ ] Optionally connect Railway to `main` as a supported fallback; Railway CD is intentionally deferred.
 - [ ] Choose a production `VITE_MAP_STYLE_URL` or explicitly accept the demo tile style for judging.
 - [ ] Deploy the backend and frontend and verify the public URL in a private/incognito window.
