@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a provenance-safe Qloo travel agent in a new `taste-route` repository derived from `trip-planner`.
+**Goal:** Build TasteRoute as a provenance-safe Qloo travel agent.
 
 **Architecture:** A typed Qloo HTTP client feeds normalized entities and recommendations into deterministic validation. A constrained orchestrator passes only validated candidates to the itinerary composer, while Vue exposes entity search and Qloo evidence.
 

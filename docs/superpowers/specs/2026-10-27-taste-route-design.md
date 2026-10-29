@@ -2,7 +2,7 @@
 
 ## Intent
 
-TasteRoute turns the existing `trip-planner` demo into a Qloo-powered travel agent. Users choose concrete cultural interests such as films, artists, books, brands, and places. Qloo resolves those interests and ranks destination-specific places; the application then validates the candidates and composes a practical itinerary whose recommendations remain traceable to Qloo evidence.
+TasteRoute is a Qloo-powered travel agent. Users choose concrete cultural interests such as films, artists, books, brands, and places. Qloo resolves those interests and ranks destination-specific places; the application then validates the candidates and composes a practical itinerary whose recommendations remain traceable to Qloo evidence.
 
 ## Goals
 
@@ -10,7 +10,7 @@ TasteRoute turns the existing `trip-planner` demo into a Qloo-powered travel age
 - Let an unauthenticated judge complete a preset or custom trip end to end.
 - Preserve Qloo entity IDs, affinity/explainability data, and source entities through the final response.
 - Keep hard travel constraints deterministic and prevent the language model from inventing places.
-- Ship from a new `taste-route` repository while retaining the original `trip-planner` history.
+- Ship TasteRoute as a self-contained project with reproducible setup and deployment instructions.
 
 ## Non-goals
 
