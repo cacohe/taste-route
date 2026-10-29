@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "results": {
+    "entities": [
+      {
+        "name": "上海市",
+        "entity_id": "3FBE70C0-D22F-4E01-8A5C-98DFADF53C35",
+        "type": "urn:entity",
+        "subtype": "urn:entity:locality",
+        "properties": {}
+      }
+    ]
+  }
+}

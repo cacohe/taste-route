@@ -54,16 +54,24 @@ class QlooService:
         except (KeyError, TypeError, ValidationError, ValueError) as exc:
             raise self._invalid_response() from exc
 
+    async def resolve_localities(
+        self, query: str, *, take: int = 5
+    ) -> list[QlooEntity]:
+        """Resolve a human destination to ranked Qloo locality entities."""
+        return await self.search_entities(query, "locality", take=take)
+
     async def recommend_places(
         self,
         *,
-        destination: str,
+        locality_id: str,
         entity_ids: list[str],
+        radius_meters: int = 0,
         take: int = 20,
     ) -> list[PlaceCandidate]:
         params: dict[str, str | int] = {
             "filter.type": "urn:entity:place",
-            "filter.location.query": destination.strip(),
+            "filter.location": locality_id.strip(),
+            "filter.location.radius": max(0, radius_meters),
             "signal.interests.entities": ",".join(entity_ids),
             "feature.explainability": "true",
             "take": self._bounded_take(take),

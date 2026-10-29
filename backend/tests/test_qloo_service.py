@@ -87,6 +87,34 @@ async def test_search_entities_normalizes_live_search_result_shape():
 
 
 @pytest.mark.anyio
+async def test_resolve_localities_searches_only_qloo_localities():
+    captured_url = ""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal captured_url
+        captured_url = str(request.url)
+        return httpx.Response(200, json=_fixture("locality-search.json"))
+
+    service = QlooService(
+        api_key="secret-key",
+        base_url="https://hackathon.api.qloo.com",
+        transport=httpx.MockTransport(handler),
+    )
+
+    results = await service.resolve_localities("上海", take=5)
+
+    request = httpx.URL(captured_url)
+    assert dict(request.params) == {
+        "query": "上海",
+        "take": "5",
+        "types": "urn:entity:locality",
+    }
+    assert [(item.id, item.name, item.entity_type) for item in results] == [
+        ("3FBE70C0-D22F-4E01-8A5C-98DFADF53C35", "上海市", "locality")
+    ]
+
+
+@pytest.mark.anyio
 async def test_recommend_places_preserves_coordinates_affinity_and_explainability():
     captured_url = ""
 
@@ -104,8 +132,9 @@ async def test_recommend_places_preserves_coordinates_affinity_and_explainabilit
     )
 
     results = await service.recommend_places(
-        destination="New York",
+        locality_id="locality-new-york",
         entity_ids=["movie-blade-runner", "artist-vangelis"],
+        radius_meters=0,
         take=10,
     )
 
@@ -113,7 +142,8 @@ async def test_recommend_places_preserves_coordinates_affinity_and_explainabilit
     assert request.path == "/v2/insights"
     assert dict(request.params) == {
         "filter.type": "urn:entity:place",
-        "filter.location.query": "New York",
+        "filter.location": "locality-new-york",
+        "filter.location.radius": "0",
         "signal.interests.entities": "movie-blade-runner,artist-vangelis",
         "feature.explainability": "true",
         "take": "10",
@@ -143,7 +173,7 @@ async def test_recommend_places_normalizes_live_location_coordinates():
         transport=httpx.MockTransport(handler),
     )
     results = await service.recommend_places(
-        destination="Paris, France", entity_ids=["movie-blade-runner"]
+        locality_id="locality-paris", entity_ids=["movie-blade-runner"]
     )
 
     assert results[0].latitude == 48.8566
@@ -166,7 +196,7 @@ async def test_recommend_places_sorts_and_bounds_weighted_tags():
         ),
     )
     results = await service.recommend_places(
-        destination="Paris", entity_ids=["movie-blade-runner"]
+        locality_id="locality-paris", entity_ids=["movie-blade-runner"]
     )
 
     assert results[0].tags == [f"Tag {index}" for index in range(9, 1, -1)]
@@ -193,7 +223,7 @@ async def test_recommend_places_normalizes_documented_entity_explainability_map(
     )
 
     results = await service.recommend_places(
-        destination="New York",
+        locality_id="locality-new-york",
         entity_ids=["movie-blade-runner", "artist-vangelis"],
     )
 
