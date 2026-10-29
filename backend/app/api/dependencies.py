@@ -38,6 +38,7 @@ def get_taste_route_orchestrator(
     qloo: QlooService = Depends(get_qloo_service),
     composer: LangChainItineraryComposer = Depends(get_itinerary_composer),
     policy: LangChainPlanningPolicy = Depends(get_planning_policy),
+    routing: OSRMRoutingService = Depends(get_routing_service),
 ) -> TasteRouteOrchestrator:
     settings = get_settings()
     return TasteRouteOrchestrator(
@@ -46,6 +47,7 @@ def get_taste_route_orchestrator(
         policy=policy,
         max_decisions=settings.agent_max_decisions,
         nearby_radius_meters=settings.qloo_nearby_radius_meters,
+        routing=routing,
     )
 
 

@@ -13,6 +13,7 @@ from app.models.planning import PlanningAction, PlanningDecision, PlanningState
 from app.models.qloo import PlaceCandidate, QlooContribution, QlooEntity
 from app.models.schemas import ItineraryDay, ItineraryItem, TasteRouteRequest, TasteSeed
 from app.services.candidate_validator import CandidateValidationError
+from app.services.routing_service import RoutingServiceError, TravelMatrix
 
 
 def _request(destination="上海") -> TasteRouteRequest:
@@ -68,12 +69,34 @@ class SequenceComposer:
         self.results = list(results or ([_day()],))
         self.corrections = []
 
-    async def compose(self, request, candidates, correction=None):
+    async def compose(self, request, candidates, travel_matrix=None, correction=None):
         self.corrections.append(correction)
         result = self.results.pop(0) if len(self.results) > 1 else self.results[0]
         if isinstance(result, Exception):
             raise result
         return result
+
+
+class FakeRouting:
+    def __init__(self, *, route=None, error=None):
+        self.route = route
+        self.error = error
+        self.matrix_calls = 0
+        self.route_calls = 0
+
+    async def build_matrix(self, candidates):
+        self.matrix_calls += 1
+        return TravelMatrix(
+            place_ids=[item.id for item in candidates],
+            durations_seconds=[[0 for _ in candidates] for _ in candidates],
+            distances_meters=[[0 for _ in candidates] for _ in candidates],
+        )
+
+    async def route_day(self, day, candidate_by_id):
+        self.route_calls += 1
+        if self.error:
+            raise self.error
+        return self.route
 
 
 class SequencePolicy:
@@ -202,3 +225,75 @@ def test_validate_itinerary_rejects_unknown_places_and_bad_dates():
         validate_itinerary(_request(), [_candidate()], [
             ItineraryDay(date=date(2026, 11, 1), items=_day().items),
         ])
+
+
+@pytest.mark.anyio
+async def test_routing_matrix_precedes_composition_and_route_is_stored():
+    from app.models.schemas import ItineraryRoute, TravelLeg
+    second = _candidate("cafe")
+    planned = ItineraryDay(date=date(2026, 10, 29), items=[
+        _day().items[0],
+        ItineraryItem(place_id="cafe", start_time="12:00", duration_minutes=60, reason="Cafe"),
+    ])
+    route = ItineraryRoute(
+        date=planned.date, geometry=[[121.47, 31.23], [121.48, 31.24]],
+        legs=[TravelLeg(from_place_id="museum", to_place_id="cafe", distance_meters=1000, duration_minutes=10)],
+        distance_meters=1000, duration_minutes=10,
+    )
+    routing = FakeRouting(route=route)
+    result = await TasteRouteOrchestrator(
+        qloo=FakeQloo(strict=[_candidate(), second]),
+        composer=SequenceComposer([planned]), routing=routing,
+    ).plan(_request())
+    assert result.data is not None
+    assert routing.matrix_calls == 1
+    assert routing.route_calls == 1
+    assert result.data.routes == [route]
+    assert "build_routes" in [decision.action for decision in result.data.decisions]
+
+
+@pytest.mark.anyio
+async def test_routing_failure_preserves_itinerary_with_warning():
+    routing = FakeRouting(error=RoutingServiceError("ROUTING_TIMEOUT", "safe", retryable=True))
+    planned = ItineraryDay(date=date(2026, 10, 29), items=[
+        _day().items[0],
+        ItineraryItem(place_id="cafe", start_time="12:00", duration_minutes=60, reason="Cafe"),
+    ])
+    result = await TasteRouteOrchestrator(
+        qloo=FakeQloo(strict=[_candidate(), _candidate("cafe")]),
+        composer=SequenceComposer([planned]), routing=routing,
+    ).plan(_request())
+    assert result.data is not None
+    assert result.data.completion_status == "completed"
+    assert result.data.days
+    assert result.data.routes == []
+    assert any("routing" in warning.lower() for warning in result.data.warnings)
+
+
+@pytest.mark.anyio
+async def test_infeasible_route_schedule_repairs_and_recomputes_routes():
+    from app.models.schemas import ItineraryRoute, TravelLeg
+    first = ItineraryDay(date=date(2026, 10, 29), items=[
+        _day().items[0],
+        ItineraryItem(place_id="cafe", start_time="11:00", duration_minutes=60, reason="Cafe"),
+    ])
+    repaired = first.model_copy(deep=True)
+    repaired.items[1].start_time = "13:00"
+    route = ItineraryRoute(
+        date=first.date, geometry=[[121.47, 31.23], [121.48, 31.24]],
+        legs=[TravelLeg(from_place_id="museum", to_place_id="cafe", distance_meters=5000, duration_minutes=90)],
+        distance_meters=5000, duration_minutes=90,
+    )
+    routing = FakeRouting(route=route)
+    composer = SequenceComposer([first], [repaired])
+
+    result = await TasteRouteOrchestrator(
+        qloo=FakeQloo(strict=[_candidate(), _candidate("cafe")]),
+        composer=composer, routing=routing,
+    ).plan(_request())
+
+    assert result.data is not None
+    assert result.data.completion_status == "completed"
+    assert result.data.days[0].items[1].start_time == "13:00"
+    assert routing.route_calls == 2
+    assert [decision.action for decision in result.data.decisions].count("repair_itinerary") == 1

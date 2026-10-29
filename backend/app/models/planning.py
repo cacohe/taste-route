@@ -7,7 +7,7 @@ from typing import Protocol
 from pydantic import BaseModel, Field
 
 from .qloo import PlaceCandidate, QlooEntity
-from .schemas import AgentDecision, ItineraryDay, ResolvedLocality, TasteRouteRequest
+from .schemas import AgentDecision, ItineraryDay, ItineraryRoute, ResolvedLocality, TasteRouteRequest
 
 
 class PlanningAction(StrEnum):
@@ -67,11 +67,14 @@ class PlanningState:
     rejected_count: int = 0
     candidates: list[PlaceCandidate] = field(default_factory=list)
     days: list[ItineraryDay] = field(default_factory=list)
-    routes: list[object] = field(default_factory=list)
+    routes: list[ItineraryRoute] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     decisions: list[AgentDecision] = field(default_factory=list)
     composition_attempts: int = 0
     routing_attempted: bool = False
+    routing_available: bool = False
+    matrix_attempted: bool = False
+    travel_matrix: object | None = None
     last_error_code: str | None = None
 
     @property

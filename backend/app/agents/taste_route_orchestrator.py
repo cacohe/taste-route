@@ -28,6 +28,7 @@ from ..services.candidate_validator import (
     validate_candidates,
 )
 from ..services.planning_log import log_planning_event
+from ..services.routing_service import RoutingPort, RoutingServiceError
 from .planning_policy import PlanningPolicyError
 
 
@@ -49,6 +50,7 @@ class QlooPort(Protocol):
 class ItineraryComposer(Protocol):
     async def compose(
         self, request: TasteRouteRequest, candidates: list[PlaceCandidate],
+        travel_matrix=None,
         correction: str | None = None,
     ) -> list[ItineraryDay]: ...
 
@@ -83,6 +85,8 @@ def allowed_actions(state: PlanningState) -> tuple[PlanningAction, ...]:
         if state.composition_attempts == 1:
             return (PlanningAction.REPAIR_ITINERARY,)
         return (PlanningAction.FAIL,)
+    if state.routing_available and not state.routing_attempted:
+        return (PlanningAction.BUILD_ROUTES,)
     return (PlanningAction.FINISH,)
 
 
@@ -106,7 +110,7 @@ def _observation(state: PlanningState) -> PlanningObservation:
         rejected_count=state.rejected_count,
         day_count=len(state.days),
         stop_count=state.stop_count,
-        routing_available=PlanningAction.BUILD_ROUTES in actions,
+        routing_available=state.routing_available,
         route_count=len(state.routes),
         warnings_count=len(state.warnings),
     )
@@ -164,11 +168,35 @@ def validate_itinerary(
     return sorted(non_empty, key=lambda day: day.date)
 
 
+def validate_schedule(days: list[ItineraryDay], route_by_date: dict) -> None:
+    """Reject transitions that cannot fit between declared visit start times."""
+    for day in days:
+        route = route_by_date.get(day.date)
+        if route is None:
+            continue
+        legs = {(leg.from_place_id, leg.to_place_id): leg for leg in route.legs}
+        for previous, following in zip(day.items, day.items[1:]):
+            leg = legs.get((previous.place_id, following.place_id))
+            if leg is None:
+                continue
+            previous_hour, previous_minute = map(int, previous.start_time.split(":"))
+            following_hour, following_minute = map(int, following.start_time.split(":"))
+            available = (following_hour * 60 + following_minute) - (
+                previous_hour * 60 + previous_minute
+            )
+            required = previous.duration_minutes + leg.duration_minutes
+            if available < required:
+                raise CandidateValidationError(
+                    "Plan does not leave enough time between adjacent stops"
+                )
+
+
 class TasteRouteOrchestrator:
     def __init__(
         self, *, qloo: QlooPort, composer: ItineraryComposer,
         policy: PlanningPolicy | None = None, max_decisions: int = 8,
         nearby_radius_meters: int = 10_000,
+        routing: RoutingPort | None = None,
         request_id_factory: Callable[[], str] | None = None,
     ) -> None:
         self._qloo = qloo
@@ -176,6 +204,7 @@ class TasteRouteOrchestrator:
         self._policy = policy
         self._max_decisions = max_decisions
         self._nearby_radius_meters = nearby_radius_meters
+        self._routing = routing
         self._request_id_factory = request_id_factory or (lambda: str(uuid4()))
 
     async def plan(
@@ -184,7 +213,7 @@ class TasteRouteOrchestrator:
     ) -> TasteRouteResponse:
         state = PlanningState(
             request_id=self._request_id_factory(), request=request,
-            max_decisions=self._max_decisions,
+            max_decisions=self._max_decisions, routing_available=self._routing is not None,
         )
         log_planning_event(
             "plan.started", request_id=state.request_id,
@@ -284,6 +313,18 @@ class TasteRouteOrchestrator:
 
         if action in {PlanningAction.COMPOSE_ITINERARY, PlanningAction.REPAIR_ITINERARY}:
             state.composition_attempts += 1
+            if self._routing is not None and not state.matrix_attempted:
+                state.matrix_attempted = True
+                try:
+                    state.travel_matrix = await self._routing.build_matrix(state.candidates)
+                except RoutingServiceError as error:
+                    state.warnings.append(
+                        "Driving travel-time evidence was unavailable; planning used Qloo coordinates."
+                    )
+                    log_planning_event(
+                        "routing.degraded", request_id=state.request_id,
+                        error_code=error.code, error=error,
+                    )
             correction = None
             if action is PlanningAction.REPAIR_ITINERARY:
                 correction = (
@@ -292,9 +333,14 @@ class TasteRouteOrchestrator:
                 )
             try:
                 proposed = await self._composer.compose(
-                    state.request, state.candidates, correction=correction
+                    state.request, state.candidates,
+                    travel_matrix=state.travel_matrix,
+                    correction=correction,
                 )
                 state.days = validate_itinerary(state.request, state.candidates, proposed)
+                if action is PlanningAction.REPAIR_ITINERARY:
+                    state.routing_attempted = False
+                    state.routes = []
                 if action is PlanningAction.REPAIR_ITINERARY:
                     state.warnings.append("The itinerary required one automatic repair pass.")
                 return (
@@ -311,6 +357,36 @@ class TasteRouteOrchestrator:
                 if state.composition_attempts >= 2:
                     state.warnings.append("Itinerary composition did not produce a usable plan.")
                 return "failed", {"day_count": 0, "stop_count": 0}
+
+        if action is PlanningAction.BUILD_ROUTES:
+            state.routing_attempted = True
+            state.routes = []
+            candidate_by_id = {candidate.id: candidate for candidate in state.candidates}
+            try:
+                for day in state.days:
+                    if len(day.items) > 1:
+                        state.routes.append(
+                            await self._routing.route_day(day, candidate_by_id)
+                        )
+                validate_schedule(
+                    state.days, {route.date: route for route in state.routes}
+                )
+                return "completed", {"route_count": len(state.routes)}
+            except CandidateValidationError as error:
+                state.days = []
+                state.routes = []
+                state.last_error_code = type(error).__name__
+                return "failed", {"route_count": 0}
+            except RoutingServiceError as error:
+                state.routes = []
+                state.warnings.append(
+                    "Driving routing was unavailable; the map uses geometric lines."
+                )
+                log_planning_event(
+                    "routing.degraded", request_id=state.request_id,
+                    error_code=error.code, error=error,
+                )
+                return "failed", {"route_count": 0}
 
         if action is PlanningAction.FINISH:
             return "completed", {"stop_count": state.stop_count}
@@ -388,7 +464,7 @@ class TasteRouteOrchestrator:
                 completion_status=completion,
                 locality=state.locality,
                 decisions=state.decisions,
-                routes=[],
+                routes=state.routes,
             ),
             error_code="PLANNING_INCOMPLETE" if completion == "failed" else None,
             retryable=completion == "failed",

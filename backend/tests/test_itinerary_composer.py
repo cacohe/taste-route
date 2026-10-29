@@ -13,6 +13,7 @@ from app.models.schemas import (
     TasteRouteRequest,
     TasteSeed,
 )
+from app.services.routing_service import TravelMatrix
 
 
 def _request() -> TasteRouteRequest:
@@ -117,6 +118,27 @@ async def test_composer_maps_invalid_structured_output_to_public_safe_error():
         await composer.compose(_request(), [_candidate()])
 
     assert str(captured.value) == "Itinerary composition is temporarily unavailable."
+
+
+@pytest.mark.anyio
+async def test_composer_includes_compact_driving_matrix_and_omits_unknown_cells():
+    structured = FakeStructuredModel(result={"days": []})
+    composer = LangChainItineraryComposer(FakeModel(structured))
+    matrix = TravelMatrix(
+        place_ids=["museum", "cafe"],
+        durations_seconds=[[0, 600], [None, 0]],
+        distances_meters=[[0, 5000], [None, 0]],
+    )
+
+    await composer.compose(_request(), [_candidate()], travel_matrix=matrix)
+
+    prompt = "\n".join(message.content for message in structured.messages)
+    assert '"travel_profile": "driving"' in prompt
+    assert '"from_place_id": "museum"' in prompt
+    assert '"to_place_id": "cafe"' in prompt
+    assert '"duration_minutes": 10' in prompt
+    assert "walking or transit" in prompt
+    assert '"from_place_id": "cafe"' not in prompt
 
 
 def test_plan_serializes_agent_evidence_without_altering_qloo_candidates():
