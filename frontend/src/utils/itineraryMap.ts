@@ -31,6 +31,21 @@ export interface ItineraryMapModel {
   routes: ItineraryMapRoute[]
 }
 
+function candidateMarkers(candidates: PlaceCandidate[]): ItineraryMapMarker[] {
+  return candidates.flatMap((candidate, index): ItineraryMapMarker[] => {
+    const point = coordinates(candidate)
+    return point ? [{
+      id: `candidate-${candidate.id}`,
+      placeId: candidate.id,
+      name: candidate.name,
+      label: String(index + 1),
+      color: '#71647f',
+      coordinates: point,
+      kind: 'candidate',
+    }] : []
+  })
+}
+
 function coordinates(candidate: PlaceCandidate | undefined): [number, number] | null {
   if (candidate?.longitude === null || candidate?.latitude === null || !candidate) return null
   return [candidate.longitude, candidate.latitude]
@@ -40,19 +55,7 @@ export function buildItineraryMapModel(plan: TasteRoutePlan): ItineraryMapModel 
   const candidates = new Map(plan.candidates.map((candidate) => [candidate.id, candidate]))
 
   if (!plan.days.length) {
-    const markers = plan.candidates.flatMap((candidate, index): ItineraryMapMarker[] => {
-      const point = coordinates(candidate)
-      return point ? [{
-        id: `candidate-${candidate.id}`,
-        placeId: candidate.id,
-        name: candidate.name,
-        label: String(index + 1),
-        color: '#71647f',
-        coordinates: point,
-        kind: 'candidate',
-      }] : []
-    })
-    return { markers, routes: [] }
+    return { markers: candidateMarkers(plan.candidates), routes: [] }
   }
 
   const markers: ItineraryMapMarker[] = []
@@ -77,5 +80,5 @@ export function buildItineraryMapModel(plan: TasteRoutePlan): ItineraryMapModel 
     })
     if (routeCoordinates.length > 1) routes.push({ date: day.date, color, coordinates: routeCoordinates })
   })
-  return { markers, routes }
+  return { markers: markers.length ? markers : candidateMarkers(plan.candidates), routes }
 }

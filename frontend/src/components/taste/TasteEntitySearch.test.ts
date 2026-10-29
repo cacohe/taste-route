@@ -79,4 +79,25 @@ describe('TasteEntitySearch', () => {
 
     expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([[]])
   })
+
+  it('labels Qloo artists as Music and searches with the artist entity type', async () => {
+    vi.mocked(searchTasteEntities).mockResolvedValue({ items: [] })
+    const wrapper = mount(TasteEntitySearch, { props: { modelValue: [] } })
+    const category = wrapper.get('select[aria-label="Taste category"]')
+
+    expect(category.text()).toContain('Music')
+    expect(category.text()).not.toContain('Artist')
+
+    await category.setValue('artist')
+    await wrapper.get('[data-test="taste-query"]').setValue('Miles Davis')
+    await vi.advanceTimersByTimeAsync(300)
+
+    expect(searchTasteEntities).toHaveBeenCalledWith('Miles Davis', 'artist')
+  })
+
+  it('exposes a dedicated category selector sizing hook', () => {
+    const wrapper = mount(TasteEntitySearch, { props: { modelValue: [] } })
+
+    expect(wrapper.get('select[aria-label="Taste category"]').classes()).toContain('category-select')
+  })
 })

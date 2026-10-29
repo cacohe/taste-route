@@ -62,4 +62,15 @@ describe('buildItineraryMapModel', () => {
       ['a', 'candidate'], ['b', 'candidate'], ['unused', 'candidate'],
     ])
   })
+
+  it('shows discovered candidates when itinerary days exist but contain no mappable stops', () => {
+    const model = buildItineraryMapModel(plan({
+      days: [{ date: '2026-11-10', items: [] }],
+    }))
+
+    expect(model.routes).toEqual([])
+    expect(model.markers.map(({ placeId, kind }) => [placeId, kind])).toEqual([
+      ['a', 'candidate'], ['b', 'candidate'], ['unused', 'candidate'],
+    ])
+  })
 })

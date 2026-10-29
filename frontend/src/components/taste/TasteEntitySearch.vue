@@ -8,10 +8,10 @@
         placeholder="Search for a film, artist, book, brand, or place"
         aria-label="Search taste entities"
       />
-      <select v-model="entityType" aria-label="Taste category">
+      <select v-model="entityType" class="category-select" aria-label="Taste category">
         <option value="">All categories</option>
         <option value="movie">Film</option>
-        <option value="artist">Artist</option>
+        <option value="artist">Music</option>
         <option value="book">Book</option>
         <option value="place">Place</option>
         <option value="brand">Brand</option>
@@ -115,8 +115,10 @@ function remove(seed: TasteSeed) {
 
 <style scoped>
 .taste-search { display: grid; gap: .9rem; }
-.search-row { display: grid; grid-template-columns: 1fr 150px; gap: .65rem; }
+.search-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(11.5rem, max-content); gap: .65rem; }
 input, select { width: 100%; box-sizing: border-box; padding: .8rem .9rem; border: 1px solid #d9d4e8; border-radius: 10px; background: white; color: #241b3a; }
+.search-row input { min-width: 0; }
+.category-select { min-width: 11.5rem; padding-right: 2.5rem; }
 .results { display: grid; gap: .4rem; max-height: 240px; overflow: auto; }
 .result { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: .75rem; width: 100%; padding: .65rem; text-align: left; border: 1px solid #eee9f8; border-radius: 10px; background: white; cursor: pointer; }
 .result:disabled { opacity: .6; cursor: default; }
