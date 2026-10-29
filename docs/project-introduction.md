@@ -8,7 +8,7 @@ TasteRoute is a taste-grounded travel agent that turns the films, artists, books
 
 Most trip planners begin with broad filters such as “food,” “museums,” or “nightlife.” Those categories are useful, but they flatten the cultural signals that make a trip feel personal. Two travelers who both select “art and cafés” may have completely different tastes, yet receive nearly identical suggestions.
 
-TasteRoute starts from specific cultural references. A traveler can combine signals such as a favorite film, musician, book, brand, or place. Qloo connects those signals to relevant real-world places at the destination, and an LLM organizes only those validated candidates into a usable day-by-day plan.
+TasteRoute starts from specific cultural references. A traveler can combine signals such as a favorite film, musician, book, brand, or place. Qloo connects those signals to relevant real-world places at the destination, and a bounded planning agent organizes only those validated candidates into a usable day-by-day plan.
 
 ## What makes TasteRoute different
 
@@ -16,15 +16,17 @@ TasteRoute starts from specific cultural references. A traveler can combine sign
 
 The selected Qloo entities are the foundation of discovery. They are not appended to a generic itinerary after generation.
 
-### Qloo discovers; the LLM composes
+### Qloo discovers; a bounded agent decides
 
 The system deliberately separates responsibilities:
 
 - Qloo Search resolves the traveler’s cultural references into canonical entities.
-- Qloo Insights discovers destination places and returns coordinates, affinity, tags, and explainability signals.
+- Qloo Search first resolves the destination to a locality ID; Qloo Insights then discovers strictly local places and returns coordinates, affinity, tags, and explainability signals.
 - Deterministic validation removes duplicates, exclusions, and places without usable coordinates.
-- The LLM receives only the validated Qloo candidate set and arranges it into an itinerary.
+- Deterministic guards expose a closed action set; a structured LLM policy chooses only among those safe actions.
+- The composer receives only validated Qloo candidates plus optional OSRM driving evidence and arranges them into an itinerary.
 - A provenance guard rejects every generated place ID that was not returned by Qloo.
+- Empty plans, invalid dates, impossible known travel timing, and exhausted decision budgets cannot be reported as successful completion.
 
 This boundary keeps the generative model useful without allowing it to invent attractions.
 
@@ -139,7 +141,7 @@ See [live-validation.md](live-validation.md) for the broader validation record.
 
 ## Current scope and next steps
 
-TasteRoute intentionally focuses on trusted cultural discovery and itinerary composition. It does not yet provide turn-by-turn navigation, travel-time optimization, reservations, authentication, or persistent trip storage. A natural next step is to add routing-aware scheduling while retaining the same Qloo provenance boundary, followed by collaborative saved trips and feedback-driven taste refinement.
+TasteRoute intentionally focuses on trusted cultural discovery and itinerary composition. OSRM driving evidence improves ordering and schedule feasibility but is degradable and is not turn-by-turn navigation or live traffic. The product does not yet provide reservations, authentication, or persistent trip storage. Natural next steps are collaborative saved trips, feedback-driven taste refinement, opening-hours evidence, and booking integrations while retaining the same Qloo provenance boundary.
 
 ## Why it matters
 

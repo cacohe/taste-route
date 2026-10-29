@@ -7,12 +7,16 @@ Live validation records real-provider checks without storing credentials or raw 
 1. Copy `backend/.env.example` to `backend/.env`.
 2. Set `QLOO_API_KEY` and the chosen LLM credentials.
 3. Start backend and frontend using the README commands.
-4. Search at least one entity in each relevant category (movie, artist, book, place).
+4. Search at least one entity in each relevant category (film, music, book, place).
 5. Generate routes for at least two countries and verify returned coordinates visually in MapLibre.
 6. Confirm every itinerary `place_id` exists in `data.candidates`.
 7. Inspect the browser network log and confirm no Qloo credential appears.
 8. Exercise an invalid Qloo key in a temporary local session and confirm the browser receives only `QLOO_AUTH_FAILED`.
 9. Record tested date, destinations, selected seeds, and redacted response observations below.
+10. Confirm `locality`, `decisions`, `completion_status`, and `routes` are present; a completed result must have at least one stop.
+11. Confirm Render logs can correlate locality, candidate, composition, and routing counts by request ID without showing prompts or secrets.
+
+The production regression scenario is destination `上海`, dates 2026-10-29 through 2026-10-31, search `简爱`, and the first two film results. Expected behavior: Qloo resolves a Shanghai locality ID, strict discovery stays local, the result is never an empty completed plan, and the map shows candidates or itinerary markers even if composition degrades.
 
 ## Validation record
 

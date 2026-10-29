@@ -12,11 +12,13 @@ TasteRoute is a taste-grounded travel agent built for the Qloo Agentic Hackathon
 - Server-side Qloo Search and Insights clients with typed normalization, bounded retry, and public-safe failures.
 - Deterministic filtering of duplicate, excluded, or coordinate-less places.
 - Provenance enforcement: an itinerary cannot reference a place Qloo did not return.
-- One bounded repair pass when the model returns invalid dates or unknown place IDs.
+- Bounded hybrid decision loop: deterministic guards expose safe actions and an LLM policy chooses only among them.
+- Qloo locality-ID resolution, strict local discovery, and one bounded nearby retry prevent accidental global results.
+- One bounded repair pass when the model returns an empty, infeasible, or provenance-invalid itinerary.
 - Structured LangChain itinerary composition constrained to validated candidate IDs.
-- Taste DNA, named Qloo contribution signals, and a visible agent workflow trace.
+- Taste DNA, scored Qloo contribution signals, and the real agent decision trace.
 - Real workflow progress streamed from the Qloo/LLM orchestration stages without fabricated percentages.
-- Global MapLibre street map with OpenFreeMap, itinerary-only markers, per-day route lines, and card/map linkage.
+- Global MapLibre street map with OpenFreeMap, OSRM driving geometry and legs, geometric fallback, and card/map linkage.
 - Public-demo rate limits, bounded concurrency, short-lived response caches, and a same-origin Docker deployment.
 
 ## Architecture
@@ -28,10 +30,11 @@ Vue taste selector
       │
       └── POST /api/trip/plan/stream (NDJSON progress + result)
               │
-              ├── Qloo Insights (places + explainability)
-              ├── deterministic validation
-              ├── structured LangChain composer (one repair pass)
-              └── provenance + date guards
+              ├── Qloo locality resolution + local Insights
+              ├── bounded observe / decide / act loop
+              ├── structured LangChain policy + composer
+              ├── provenance, non-empty, date + schedule guards
+              └── optional OSRM driving matrix + routes
                         │
                         └── Vue result + MapLibre
 ```
@@ -78,6 +81,9 @@ Open `http://localhost:5173`; backend API docs are at `http://localhost:8000/doc
 | `LLM_API_KEY` | Key for the structured itinerary composer |
 | `LLM_BASE_URL` / `LLM_MODEL` | OpenAI-compatible endpoint and model; no provider is selected by default |
 | `CORS_ORIGINS` | Comma-separated frontend origins |
+| `AGENT_MAX_DECISIONS` | Hard planning-action budget; default `8` |
+| `QLOO_NEARBY_RADIUS_METERS` | One nearby retry radius; default `10000` |
+| `ROUTING_BASE_URL` / `ROUTING_TIMEOUT_SECONDS` | Optional OSRM-compatible driving evidence |
 
 The frontend only needs `VITE_API_BASE_URL` when it is not served through the local Vite proxy.
 OpenFreeMap Liberty is the default global street style. `VITE_MAP_STYLE_URL` optionally selects another MapLibre-compatible provider without changing application code.
@@ -118,7 +124,7 @@ Fixture-based integration tests do not contact Qloo or the LLM. Live-key validat
 ## Known limitations
 
 - No account system or database; the generated plan is kept in browser session storage.
-- Route lines connect itinerary stops geometrically; turn-by-turn navigation and travel-time calculation are intentionally not implemented.
+- OSRM is degradable public routing evidence, not a navigation SLA; no turn-by-turn instructions or live traffic are provided.
 - Demo rate limits and caches are process-local; use one application replica or introduce Redis before scaling horizontally.
 - MapLibre is intentionally isolated behind the lazy result route. Its audited library chunk is about 1.1 MB minified / 300 KB gzip and is not downloaded on the planner page.
 
