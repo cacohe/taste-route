@@ -4,7 +4,7 @@ TasteRoute ships as one Docker image: Vite builds the Vue app, then FastAPI serv
 
 ## Render: initial setup
 
-1. In Render, create a Blueprint from this private GitHub repository. Render reads the root `render.yaml`, links `main`, builds the root `Dockerfile`, and checks `GET /health`.
+1. In Render, create a Blueprint from the public GitHub repository. Render reads the root `render.yaml`, links `main`, builds the root `Dockerfile`, and checks `GET /health`.
 2. During Blueprint creation, provide `QLOO_API_KEY`, `LLM_API_KEY`, `LLM_BASE_URL`, and `LLM_MODEL`. They are declared with `sync: false` and must never be committed. Optional planning controls are `AGENT_MAX_DECISIONS`, `QLOO_NEARBY_RADIUS_METERS`, `ROUTING_BASE_URL`, and `ROUTING_TIMEOUT_SECONDS`.
 3. No map credential is required: the production build defaults to the OpenFreeMap Liberty global street style. Optionally add `VITE_MAP_STYLE_URL` to select another MapLibre-compatible style; Render supplies that non-secret value to the Vite build through the matching Docker build argument.
 4. Keep one instance. Rate limits, concurrency guards, and caches are process-local.

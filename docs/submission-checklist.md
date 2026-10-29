@@ -37,6 +37,8 @@ A demo video is **not required** by the official overview. Screenshots are still
 
 Final submission: `https://devpost.com/software/shipping-billing-assistant-uhwaim` (submitted October 29, 2026; Devpost displayed `Project submitted!`). The inherited Devpost slug does not affect the displayed TasteRoute name or content.
 
+The public testing instructions use the verified future-date reference scenario: Shanghai, November 10–12, 2026, with Jane Eyre taste signals.
+
 Submission media is retained in `docs/submission-assets/`: the 3:2 thumbnail, homepage, taste selection, live agent progress, and completed map/itinerary views.
 
 ## Final presentation readiness
