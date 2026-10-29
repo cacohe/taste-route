@@ -8,6 +8,7 @@ from ..agents.taste_route_orchestrator import TasteRouteOrchestrator
 from ..config import get_settings
 from ..services.llm_service import get_llm
 from ..services.qloo_service import QlooService
+from ..services.routing_service import OSRMRoutingService
 from ..services.runtime_controls import DemoControls
 
 _demo_controls: DemoControls | None = None
@@ -23,6 +24,14 @@ def get_itinerary_composer() -> LangChainItineraryComposer:
 
 def get_planning_policy() -> LangChainPlanningPolicy:
     return LangChainPlanningPolicy(get_llm())
+
+
+def get_routing_service() -> OSRMRoutingService:
+    settings = get_settings()
+    return OSRMRoutingService(
+        settings.routing_base_url,
+        timeout_seconds=settings.routing_timeout_seconds,
+    )
 
 
 def get_taste_route_orchestrator(

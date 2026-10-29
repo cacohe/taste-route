@@ -93,6 +93,22 @@ class AgentDecision(BaseModel):
     metrics: dict[str, int | float] = Field(default_factory=dict)
 
 
+class TravelLeg(BaseModel):
+    from_place_id: str
+    to_place_id: str
+    distance_meters: int = Field(ge=0)
+    duration_minutes: int = Field(ge=0)
+
+
+class ItineraryRoute(BaseModel):
+    date: date
+    profile: Literal["driving"] = "driving"
+    geometry: list[list[float]] = Field(default_factory=list)
+    legs: list[TravelLeg] = Field(default_factory=list)
+    distance_meters: int = Field(ge=0)
+    duration_minutes: int = Field(ge=0)
+
+
 class TasteRoutePlan(BaseModel):
     request_id: str
     destination: str
@@ -106,7 +122,7 @@ class TasteRoutePlan(BaseModel):
     completion_status: Literal["completed", "partial", "failed"] = "completed"
     locality: ResolvedLocality | None = None
     decisions: list[AgentDecision] = Field(default_factory=list)
-    routes: list[dict[str, object]] = Field(default_factory=list)
+    routes: list[ItineraryRoute] = Field(default_factory=list)
 
 
 class TasteRouteResponse(BaseModel):

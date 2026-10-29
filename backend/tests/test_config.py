@@ -34,6 +34,12 @@ def test_agent_loop_defaults_are_bounded():
     assert candidate.qloo_nearby_radius_meters == 10_000
 
 
+def test_routing_defaults_are_explicitly_driving_osrm():
+    candidate = _settings()
+    assert candidate.routing_base_url == "https://router.project-osrm.org"
+    assert candidate.routing_timeout_seconds == 10
+
+
 def test_validate_config_requires_qloo_key():
     with pytest.raises(ValueError, match="QLOO_API_KEY"):
         validate_config(_settings(qloo_api_key=""))
