@@ -5,7 +5,14 @@ import pytest
 from app.agents.itinerary_composer import LangChainItineraryComposer
 from app.agents.taste_route_orchestrator import ItineraryComposerError
 from app.models.qloo import PlaceCandidate
-from app.models.schemas import TasteRouteRequest, TasteSeed
+from app.models.schemas import (
+    AgentDecision,
+    ResolvedLocality,
+    TasteProfile,
+    TasteRoutePlan,
+    TasteRouteRequest,
+    TasteSeed,
+)
 
 
 def _request() -> TasteRouteRequest:
@@ -110,4 +117,34 @@ async def test_composer_maps_invalid_structured_output_to_public_safe_error():
         await composer.compose(_request(), [_candidate()])
 
     assert str(captured.value) == "Itinerary composition is temporarily unavailable."
+
+
+def test_plan_serializes_agent_evidence_without_altering_qloo_candidates():
+    source = _candidate()
+    plan = TasteRoutePlan(
+        request_id="request-1",
+        destination="New York",
+        start_date=date(2026, 11, 10),
+        end_date=date(2026, 11, 11),
+        taste_profile=TasteProfile(seeds=_request().taste_seeds),
+        candidates=[source],
+        completion_status="partial",
+        locality=ResolvedLocality(id="locality-1", name="New York City"),
+        decisions=[AgentDecision(
+            iteration=1,
+            action="resolve_locality",
+            status="completed",
+            reason="Resolved by Qloo rank.",
+            metrics={"result_count": 3},
+        )],
+        routes=[],
+    )
+
+    payload = plan.model_dump(mode="json")
+
+    assert payload["completion_status"] == "partial"
+    assert payload["locality"] == {"id": "locality-1", "name": "New York City"}
+    assert payload["decisions"][0]["action"] == "resolve_locality"
+    assert payload["routes"] == []
+    assert payload["candidates"][0]["id"] == source.id
 

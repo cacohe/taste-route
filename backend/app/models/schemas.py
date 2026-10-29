@@ -1,7 +1,7 @@
 """Validated public request and response contracts for TasteRoute."""
 
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, StringConstraints, field_validator
 
@@ -71,6 +71,28 @@ class ItineraryDay(BaseModel):
     items: list[ItineraryItem] = Field(default_factory=list)
 
 
+class ResolvedLocality(BaseModel):
+    id: str = Field(min_length=1, max_length=200)
+    name: str = Field(min_length=1, max_length=200)
+
+
+class AgentDecision(BaseModel):
+    iteration: int = Field(ge=1)
+    action: Literal[
+        "resolve_locality",
+        "discover_strict",
+        "discover_nearby",
+        "compose_itinerary",
+        "repair_itinerary",
+        "build_routes",
+        "finish",
+        "fail",
+    ]
+    status: Literal["active", "completed", "repaired", "skipped", "failed"]
+    reason: str = Field(min_length=1, max_length=240)
+    metrics: dict[str, int | float] = Field(default_factory=dict)
+
+
 class TasteRoutePlan(BaseModel):
     request_id: str
     destination: str
@@ -81,6 +103,10 @@ class TasteRoutePlan(BaseModel):
     days: list[ItineraryDay] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     trace: list[WorkflowStep] = Field(default_factory=list)
+    completion_status: Literal["completed", "partial", "failed"] = "completed"
+    locality: ResolvedLocality | None = None
+    decisions: list[AgentDecision] = Field(default_factory=list)
+    routes: list[dict[str, object]] = Field(default_factory=list)
 
 
 class TasteRouteResponse(BaseModel):
