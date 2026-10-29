@@ -28,6 +28,12 @@ def test_get_qloo_config_returns_bounded_server_configuration():
     }
 
 
+def test_agent_loop_defaults_are_bounded():
+    candidate = _settings()
+    assert candidate.agent_max_decisions == 8
+    assert candidate.qloo_nearby_radius_meters == 10_000
+
+
 def test_validate_config_requires_qloo_key():
     with pytest.raises(ValueError, match="QLOO_API_KEY"):
         validate_config(_settings(qloo_api_key=""))

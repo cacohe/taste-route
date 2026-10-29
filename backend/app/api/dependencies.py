@@ -3,6 +3,7 @@
 from fastapi import Depends
 
 from ..agents.itinerary_composer import LangChainItineraryComposer
+from ..agents.planning_policy import LangChainPlanningPolicy
 from ..agents.taste_route_orchestrator import TasteRouteOrchestrator
 from ..config import get_settings
 from ..services.llm_service import get_llm
@@ -20,11 +21,23 @@ def get_itinerary_composer() -> LangChainItineraryComposer:
     return LangChainItineraryComposer(get_llm())
 
 
+def get_planning_policy() -> LangChainPlanningPolicy:
+    return LangChainPlanningPolicy(get_llm())
+
+
 def get_taste_route_orchestrator(
     qloo: QlooService = Depends(get_qloo_service),
     composer: LangChainItineraryComposer = Depends(get_itinerary_composer),
+    policy: LangChainPlanningPolicy = Depends(get_planning_policy),
 ) -> TasteRouteOrchestrator:
-    return TasteRouteOrchestrator(qloo=qloo, composer=composer)
+    settings = get_settings()
+    return TasteRouteOrchestrator(
+        qloo=qloo,
+        composer=composer,
+        policy=policy,
+        max_decisions=settings.agent_max_decisions,
+        nearby_radius_meters=settings.qloo_nearby_radius_meters,
+    )
 
 
 def get_demo_controls() -> DemoControls:

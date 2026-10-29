@@ -101,15 +101,15 @@ async def plan_trip_stream(
     async def records():
         if isinstance(cached, TasteRouteResponse):
             if cached.data is not None:
-                for step in cached.data.trace:
-                    yield _stream_line({"type": "progress", "step": step.model_dump(mode="json")})
+                for decision in cached.data.decisions:
+                    yield _stream_line({"type": "progress", "decision": decision.model_dump(mode="json")})
             yield _stream_line({"type": "result", "response": cached.model_dump(mode="json")})
             return
 
         queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
 
-        async def publish_progress(step) -> None:
-            await queue.put({"type": "progress", "step": step.model_dump(mode="json")})
+        async def publish_progress(decision) -> None:
+            await queue.put({"type": "progress", "decision": decision.model_dump(mode="json")})
 
         async def run_plan() -> None:
             try:

@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     qloo_timeout_seconds: float = Field(default=15.0, gt=0, le=60)
     qloo_max_results: int = Field(default=20, ge=1, le=50)
 
+    # ========== Bounded planning agent ===========
+    agent_max_decisions: int = Field(default=8, ge=4, le=20)
+    qloo_nearby_radius_meters: int = Field(default=10_000, ge=1_000, le=50_000)
+
     # ========== Public demo safeguards (process-local) ==========
     search_rate_limit_per_minute: int = Field(default=30, ge=1, le=300)
     plan_rate_limit_per_minute: int = Field(default=5, ge=1, le=60)

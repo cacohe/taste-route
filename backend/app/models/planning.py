@@ -60,6 +60,8 @@ class PlanningState:
     max_decisions: int
     locality: ResolvedLocality | None = None
     locality_results: list[QlooEntity] = field(default_factory=list)
+    seed_ids: list[str] = field(default_factory=list)
+    seed_names: dict[str, str] = field(default_factory=dict)
     discovery_attempts: int = 0
     raw_candidate_count: int = 0
     rejected_count: int = 0
@@ -70,6 +72,7 @@ class PlanningState:
     decisions: list[AgentDecision] = field(default_factory=list)
     composition_attempts: int = 0
     routing_attempted: bool = False
+    last_error_code: str | None = None
 
     @property
     def stop_count(self) -> int:

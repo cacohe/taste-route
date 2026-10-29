@@ -11,7 +11,7 @@ from app.api.dependencies import (
 )
 from app.api.routes import taste, trip
 from app.models.qloo import QlooEntity
-from app.models.schemas import TasteProfile, TasteRoutePlan, TasteRouteResponse, WorkflowStep
+from app.models.schemas import AgentDecision, TasteProfile, TasteRoutePlan, TasteRouteResponse
 from app.services.qloo_service import QlooServiceError
 from app.services.runtime_controls import DemoControls
 
@@ -66,10 +66,18 @@ class RateLimitedOrchestrator:
 
 class StreamingOrchestrator(FakeOrchestrator):
     async def plan(self, request, on_progress=None):
+        decision = AgentDecision(
+            iteration=1,
+            action="resolve_locality",
+            status="completed",
+            reason="Resolved destination with Qloo.",
+            metrics={"result_count": 2},
+        )
         if on_progress is not None:
-            await on_progress(WorkflowStep(key="taste_resolution", label="Resolve taste signals", status="active"))
-            await on_progress(WorkflowStep(key="taste_resolution", label="Resolve taste signals", status="completed"))
-        return await super().plan(request)
+            await on_progress(decision)
+        response = await super().plan(request)
+        response.data.decisions = [decision]
+        return response
 
 
 class FailingStreamingOrchestrator:
@@ -206,7 +214,8 @@ def test_plan_route_maps_rate_limit_to_retryable_503():
 
 
 def test_plan_stream_returns_progress_then_terminal_result():
-    response = _client(orchestrator=StreamingOrchestrator()).post(
+    client = _client(orchestrator=StreamingOrchestrator())
+    response = client.post(
         "/api/trip/plan/stream",
         json={
             "destination": "New York",
@@ -221,9 +230,23 @@ def test_plan_stream_returns_progress_then_terminal_result():
     records = [json.loads(line) for line in response.text.splitlines()]
 
     assert response.headers["content-type"].startswith("application/x-ndjson")
-    assert [record["type"] for record in records] == ["progress", "progress", "result"]
-    assert records[0]["step"]["status"] == "active"
+    assert [record["type"] for record in records] == ["progress", "result"]
+    assert records[0]["decision"]["status"] == "completed"
     assert records[-1]["response"]["data"]["request_id"] == "request-123"
+
+    cached = client.post(
+        "/api/trip/plan/stream",
+        json={
+            "destination": "New York",
+            "start_date": "2026-11-10",
+            "end_date": "2026-11-11",
+            "taste_seeds": [
+                {"id": "movie-1", "name": "Blade Runner", "entity_type": "movie"}
+            ],
+        },
+    )
+    cached_records = [json.loads(line) for line in cached.text.splitlines()]
+    assert cached_records == records
 
 
 def test_plan_stream_serializes_safe_retryable_error():
