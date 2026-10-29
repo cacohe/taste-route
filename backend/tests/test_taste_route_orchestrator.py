@@ -149,6 +149,27 @@ async def test_shanghai_uses_resolved_locality_id_and_strict_radius():
 
 
 @pytest.mark.anyio
+async def test_locality_resolution_preserves_qloo_ranking_for_ambiguous_names():
+    qloo = FakeQloo(localities=[
+        QlooEntity(
+            id="shanghai-china", name="上海市", entity_type="locality",
+        ),
+        QlooEntity(
+            id="shanghai-philippines", name="Shanghai", entity_type="locality",
+        ),
+    ])
+
+    result = await TasteRouteOrchestrator(
+        qloo=qloo, composer=SequenceComposer(),
+    ).plan(_request(destination="Shanghai"))
+
+    assert result.data is not None
+    assert result.data.locality is not None
+    assert result.data.locality.id == "shanghai-china"
+    assert qloo.discovery_calls[0][0] == "shanghai-china"
+
+
+@pytest.mark.anyio
 async def test_strict_empty_discovery_retries_nearby_once():
     qloo = FakeQloo(strict=[], nearby=[_candidate("nearby")])
     result = await TasteRouteOrchestrator(

@@ -262,9 +262,7 @@ class TasteRouteOrchestrator:
                 state.request.destination, take=5
             )
             if locality_results:
-                selected = self._select_locality(
-                    state.request.destination, locality_results
-                )
+                selected = self._select_locality(locality_results)
                 state.locality = ResolvedLocality(id=selected.id, name=selected.name)
                 log_planning_event(
                     "locality.resolved", request_id=state.request_id,
@@ -388,12 +386,8 @@ class TasteRouteOrchestrator:
         return "skipped", {}
 
     @staticmethod
-    def _select_locality(query: str, results: list[QlooEntity]) -> QlooEntity:
-        normalized = query.strip().casefold()
-        return next(
-            (item for item in results if item.name.strip().casefold() == normalized),
-            results[0],
-        )
+    def _select_locality(results: list[QlooEntity]) -> QlooEntity:
+        return results[0]
 
     async def _resolve_seed_ids(
         self, request: TasteRouteRequest,
