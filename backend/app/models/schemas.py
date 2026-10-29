@@ -3,7 +3,7 @@
 from datetime import date
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, StringConstraints, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 
 from .qloo import PlaceCandidate
 
@@ -123,6 +123,12 @@ class TasteRoutePlan(BaseModel):
     locality: ResolvedLocality | None = None
     decisions: list[AgentDecision] = Field(default_factory=list)
     routes: list[ItineraryRoute] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def completed_plan_has_stops(self):
+        if self.completion_status == "completed" and not any(day.items for day in self.days):
+            raise ValueError("completed plan must contain at least one stop")
+        return self
 
 
 class TasteRouteResponse(BaseModel):

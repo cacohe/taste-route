@@ -1,6 +1,7 @@
 from datetime import date
 
 import pytest
+from pydantic import ValidationError
 
 from app.agents.itinerary_composer import LangChainItineraryComposer
 from app.agents.taste_route_orchestrator import ItineraryComposerError
@@ -169,4 +170,14 @@ def test_plan_serializes_agent_evidence_without_altering_qloo_candidates():
     assert payload["decisions"][0]["action"] == "resolve_locality"
     assert payload["routes"] == []
     assert payload["candidates"][0]["id"] == source.id
+
+
+def test_completed_plan_cannot_serialize_without_any_stops():
+    with pytest.raises(ValidationError, match="completed plan must contain at least one stop"):
+        TasteRoutePlan(
+            request_id="request-empty", destination="New York",
+            start_date=date(2026, 11, 10), end_date=date(2026, 11, 11),
+            taste_profile=TasteProfile(), completion_status="completed",
+            candidates=[_candidate()], days=[],
+        )
 

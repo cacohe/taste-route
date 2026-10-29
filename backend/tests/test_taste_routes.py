@@ -53,6 +53,7 @@ class FakeOrchestrator:
                 candidates=[],
                 days=[],
                 warnings=[],
+                completion_status="partial",
             ),
         )
 
