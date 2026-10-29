@@ -29,6 +29,7 @@ The production regression scenario is destination `上海`, dates 2026-10-29 thr
 | 2026-10-28 | Local | Provider-neutral LLM itinerary composition | Passed with `deepseek-flash`; Paris produced 2 days/10 items and Tokyo produced 2 days/9 items |
 | 2026-10-28 | Local browser | Complete itinerary + evidence + MapLibre | Passed; Paris rendered two itinerary days, per-stop Qloo evidence, and 20 map markers |
 | 2026-10-28 | Production-shaped local server | FastAPI-served Vue + live Paris regression | Passed; health, homepage, OpenAPI, Qloo search, and plan returned 20 candidates, 2 days, 13 items, and three completed workflow stages |
+| 2026-10-29 | Render production (`f3b9f18`) | 上海, 2026-10-29–31, first two 简爱 film results | Passed; Qloo resolved 上海市 (`3FBE…3C35`), strict discovery returned 20/20 mappable local candidates, bounded actions were resolve → strict discover → compose → route → finish, and the completed plan contained 3 days, 13 stops, 3 driving routes, and no warnings |
 
 ## 2026-10-28 observations
 
