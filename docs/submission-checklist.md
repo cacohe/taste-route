@@ -14,26 +14,30 @@ Submission closes **October 30, 2026 at 11:45 PM EDT**, which is **October 31, 2
 - [x] The externally hosted application is available at `https://taste-route-ch14.onrender.com`.
 - [x] The repository contains source code, assets, setup instructions, deployment configuration, and an MIT license recognized by GitHub.
 - [x] The English project description explains the workflow, core features, and why the result is Qloo-powered.
-- [ ] Change the GitHub repository from private to public before submitting.
+- [x] Change the GitHub repository from private to public before submitting.
 - [ ] Confirm the live application remains free and accessible without login through the judging period, ending November 5, 2026 at 9:00 AM EST.
 - [ ] Confirm all third-party services, assets, fonts, map tiles, and APIs are used under applicable terms and attribution requirements.
 
 ## Devpost submission steps
 
-- [ ] Join the Qloo Agentic Hackathon with the submitting Devpost account.
-- [ ] Create a draft from the hackathon's **Enter a Submission** page.
-- [ ] Enter the project name, a concise tagline, and an English project story based on `docs/project-introduction.md`.
-- [ ] Upload a 3:2 project thumbnail and add representative screenshots to the image gallery.
-- [ ] Add relevant **Built with** tags, including Qloo, LangChain, FastAPI, Vue, MapLibre, and Render.
-- [ ] Add the functional demo URL: `https://taste-route-ch14.onrender.com`.
-- [ ] Add the public repository URL: `https://github.com/cacohe/taste-route`.
-- [ ] Ensure the gallery covers taste selection, generation progress, Qloo evidence, the itinerary, and the MapLibre route.
-- [ ] Add concise testing instructions and state that no account is required.
-- [ ] Complete any entrant type, country of residence, license, public-repository, and project-history questions shown by Devpost.
+- [x] Join the Qloo Agentic Hackathon with the submitting Devpost account.
+- [x] Create a draft from the hackathon's **Enter a Submission** page.
+- [x] Enter the project name, a concise tagline, and an English project story based on `docs/project-introduction.md`.
+- [x] Upload a 3:2 project thumbnail and add representative screenshots to the image gallery.
+- [x] Add relevant **Built with** tags, including Qloo, LangChain, FastAPI, Vue, MapLibre, and Render.
+- [x] Add the functional demo URL: `https://taste-route-ch14.onrender.com`.
+- [x] Add the public repository URL: `https://github.com/cacohe/taste-route`.
+- [x] Ensure the gallery covers taste selection, generation progress, Qloo evidence, the itinerary, and the MapLibre route.
+- [x] Add concise testing instructions and state that no account is required.
+- [x] Complete the project date, public demo URL, public-repository URL, and project-history fields shown by Devpost.
 - [ ] Review the submission preview, test every submitted link in a private browser window, and submit before the deadline.
 - [ ] Save the final Devpost URL and submission confirmation.
 
 A demo video is **not required** by the official overview. Screenshots are still strongly recommended because the rules allow judges to evaluate the text, images, and video without necessarily exercising the application.
+
+Current draft preview: `https://devpost.com/software/shipping-billing-assistant-uhwaim` (the inherited Devpost slug does not affect the displayed TasteRoute name or content).
+
+Submission media is retained in `docs/submission-assets/`: the 3:2 thumbnail, homepage, taste selection, live agent progress, and completed map/itinerary views.
 
 ## Final presentation readiness
 
