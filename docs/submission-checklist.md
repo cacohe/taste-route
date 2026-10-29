@@ -30,12 +30,12 @@ Submission closes **October 30, 2026 at 11:45 PM EDT**, which is **October 31, 2
 - [x] Ensure the gallery covers taste selection, generation progress, Qloo evidence, the itinerary, and the MapLibre route.
 - [x] Add concise testing instructions and state that no account is required.
 - [x] Complete the project date, public demo URL, public-repository URL, and project-history fields shown by Devpost.
-- [ ] Review the submission preview, test every submitted link in a private browser window, and submit before the deadline.
-- [ ] Save the final Devpost URL and submission confirmation.
+- [x] Review the submission preview, verify both submitted links through unauthenticated HTTP requests, and submit before the deadline.
+- [x] Save the final Devpost URL and submission confirmation.
 
 A demo video is **not required** by the official overview. Screenshots are still strongly recommended because the rules allow judges to evaluate the text, images, and video without necessarily exercising the application.
 
-Current draft preview: `https://devpost.com/software/shipping-billing-assistant-uhwaim` (the inherited Devpost slug does not affect the displayed TasteRoute name or content).
+Final submission: `https://devpost.com/software/shipping-billing-assistant-uhwaim` (submitted October 29, 2026; Devpost displayed `Project submitted!`). The inherited Devpost slug does not affect the displayed TasteRoute name or content.
 
 Submission media is retained in `docs/submission-assets/`: the 3:2 thumbnail, homepage, taste selection, live agent progress, and completed map/itinerary views.
 
