@@ -17,7 +17,7 @@ permissions:
 jobs:
   backend:
     name: Backend
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:
@@ -33,7 +33,7 @@ jobs:
           python-version: "3.12"
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
 
@@ -51,7 +51,7 @@ jobs:
 
   frontend:
     name: Frontend
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:
@@ -62,7 +62,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10.32.1
 
@@ -84,7 +84,7 @@ jobs:
 
   container:
     name: Container
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     needs: [backend, frontend]
 
@@ -97,7 +97,7 @@ jobs:
 
   deploy-render:
     name: Deploy Render
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     needs: [backend, frontend, container]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
