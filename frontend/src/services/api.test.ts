@@ -20,7 +20,7 @@ describe('api client', () => {
       success: true, message: 'Done', error_code: null, retryable: false,
       data: {
         request_id: 'request-1', destination: 'Tokyo', start_date: '2026-11-10', end_date: '2026-11-11',
-        taste_profile: { tags: [], seeds: [] }, candidates: [], days: [], warnings: [], trace: [],
+        taste_profile: { tags: [], seeds: [] }, candidates: [], days: [], warnings: [],
       },
     }
     const body = `${JSON.stringify({ type: 'progress', step: { key: 'taste_resolution', label: 'Resolve taste signals', status: 'active' } })}\n${JSON.stringify({ type: 'result', response })}\n`

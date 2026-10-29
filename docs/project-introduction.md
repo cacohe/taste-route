@@ -39,7 +39,8 @@ The result page preserves the evidence behind each stop:
 - named contribution signals when Qloo provides them;
 - the LLM’s grounded reason for including the place;
 - Qloo coordinates rendered with MapLibre;
-- a visible workflow trace showing discovery and composition status.
+- resolved Qloo locality evidence and the actual bounded agent decisions;
+- OSRM driving geometry, distance, and duration when routing succeeds.
 
 When upstream evidence is missing, the interface says so instead of fabricating an explanation.
 
@@ -49,34 +50,38 @@ When upstream evidence is missing, the interface says so instead of fabricating 
 Traveler selects cultural references
                 │
                 ▼
-      Qloo entity resolution
+ Qloo seed + locality resolution
                 │
                 ▼
- Qloo destination-place discovery
+ Strict local Qloo discovery
                 │
                 ▼
  Deterministic candidate validation
                 │
                 ▼
-  Structured itinerary composition
+ Bounded policy chooses allowed action
                 │
                 ▼
- Provenance + date validation
-        │               │
-        │ valid         │ invalid
-        ▼               ▼
-   Final plan      One repair pass
-                           │
-                           ▼
-                 validate or reject
+ Structured itinerary composition
+                │
+                ▼
+ Provenance + non-empty + date guards
+        │                    │
+        │ valid              │ invalid
+        ▼                    ▼
+ OSRM driving critique   One repair pass
+        │                    │
+        └──────────┬─────────┘
+                   ▼
+     completed / partial / failed
 ```
 
-If the first composition references an unknown place, leaves the requested date range, or duplicates a day, TasteRoute supplies the validation defect to the composer for one bounded repair pass. A second invalid result is rejected. The invalid itinerary is never returned to the traveler.
+If the first composition is empty, references an unknown place, leaves the requested date range, duplicates a day, or conflicts with known driving time, TasteRoute supplies a safe correction for one bounded repair pass. A second invalid result becomes an explicit partial result with Qloo candidates preserved. The invalid itinerary is never returned to the traveler.
 
 ## Example user journey
 
 1. Enter a destination and travel dates.
-2. Search Qloo for specific films, artists, books, brands, or places.
+2. Search Qloo for specific films, music, books, brands, or places.
 3. Combine one or more taste signals and choose pace, budget, and practical constraints.
 4. Generate a route.
 5. Explore the Taste DNA summary, day-by-day itinerary, Qloo evidence, agent workflow, and MapLibre map.
@@ -90,7 +95,8 @@ Qloo is central to the product rather than an auxiliary enrichment API.
 | Stage | Qloo capability | Product purpose |
 | --- | --- | --- |
 | Taste selection | Search API | Resolve human-readable cultural references into Qloo entity IDs |
-| Destination discovery | Insights API | Find real places connected to the selected taste signals |
+| Destination resolution | Search API | Resolve user input to a canonical Qloo locality ID |
+| Destination discovery | Insights API | Find strictly local real places connected to the selected taste signals |
 | Evidence | Explainability, affinity, and tags | Show why a candidate is relevant |
 | Mapping | Place coordinates | Render validated candidates globally with MapLibre |
 
@@ -102,7 +108,7 @@ The Qloo credential remains server-side. Raw upstream errors and credentials are
 - Qloo calls use bounded timeouts and retries with public-safe error classifications.
 - LLM timeout and retry behavior are configurable and provider-neutral.
 - Structured output is validated with Pydantic.
-- Candidate provenance and requested dates are enforced deterministically.
+- Candidate provenance, non-empty completion, dates, ordering, and known driving feasibility are enforced deterministically.
 - Search and planning endpoints have process-local rate limits and short-lived caches.
 - Planning concurrency is bounded to protect Qloo and LLM quotas.
 - The production container exposes a health endpoint and serves the frontend and API from one origin.
@@ -113,18 +119,18 @@ The Qloo credential remains server-side. Raw upstream errors and credentials are
 - **Agent orchestration:** Python, LangChain, provider-neutral OpenAI-compatible chat model
 - **Backend:** FastAPI, Pydantic, HTTPX
 - **Frontend:** Vue 3, TypeScript, Vite
-- **Map:** MapLibre GL JS using coordinates supplied by Qloo
+- **Map and routing:** MapLibre GL JS using Qloo coordinates plus degradable OSRM driving evidence
 - **Deployment:** Multi-stage Docker image, Render Blueprint/CD, retained Railway configuration, GitHub Actions
 - **Testing:** pytest, Vitest, Vue Test Utils, production smoke tests
 
 ## Validation evidence
 
-The repository includes fixture-based automated tests and a redacted live-validation record. The latest production-shaped local regression used **Blade Runner** as the taste signal and **Paris, France** as the destination:
+The repository includes fixture-based automated tests and a redacted live-validation record. The latest production regression used the first two **Jane Eyre** film results and **上海** as the destination:
 
-- 20 Qloo candidates returned;
+- Qloo resolved `上海市` and strict local discovery returned 20 mappable candidates;
 - all accepted candidates retained Qloo provenance and coordinates;
-- 2 itinerary days and 13 itinerary items generated;
-- all three workflow stages completed;
+- 3 itinerary days, 13 itinerary items, and 3 driving routes were generated;
+- the bounded decision chain completed locality resolution, strict discovery, composition, routing, and finish;
 - no itinerary item referenced a place outside the Qloo candidate set;
 - the production Vue build, `/health`, and `/openapi.json` passed the smoke test.
 
@@ -133,11 +139,11 @@ See [live-validation.md](live-validation.md) for the broader validation record.
 ## Suggested 90-second demo
 
 1. **Problem, 10 seconds:** explain that category-based planners do not understand the traveler’s specific cultural taste.
-2. **Taste selection, 20 seconds:** search Qloo and combine two cross-domain signals.
+2. **Taste selection, 20 seconds:** search Qloo and combine two cross-domain signals, including the Music category when useful.
 3. **Generation, 10 seconds:** choose a destination, dates, pace, and one practical constraint.
-4. **Evidence, 30 seconds:** show Taste DNA, a stop’s Qloo tags and contribution signal, and the agent workflow trace.
-5. **Trust, 10 seconds:** explain that the LLM can only compose from validated Qloo candidates and receives one repair attempt before rejection.
-6. **Global experience, 10 seconds:** show the Qloo coordinates on MapLibre and mention the single-service deployable architecture.
+4. **Evidence, 30 seconds:** show the resolved locality, scored Qloo contribution signals, real decision trace, and driving legs.
+5. **Trust, 10 seconds:** explain that the policy can choose only controller-approved actions and the composer receives one repair attempt before a partial result.
+6. **Global experience, 10 seconds:** show Qloo coordinates and OSRM road geometry in MapLibre, then mention geometric fallback and the single-service deployment.
 
 ## Current scope and next steps
 

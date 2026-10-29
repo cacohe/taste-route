@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="Taste-grounded global itinerary planning with Qloo and LangChain",
+    description="Bounded taste-grounded itinerary planning with Qloo, LangChain, and optional OSRM driving evidence",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,

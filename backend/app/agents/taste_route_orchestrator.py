@@ -20,7 +20,6 @@ from ..models.schemas import (
     TasteRoutePlan,
     TasteRouteRequest,
     TasteRouteResponse,
-    WorkflowStep,
 )
 from ..services.candidate_validator import (
     CandidateValidationError,
@@ -28,7 +27,7 @@ from ..services.candidate_validator import (
     validate_candidates,
 )
 from ..services.planning_log import log_planning_event
-from ..services.routing_service import RoutingPort, RoutingServiceError
+from ..services.routing_service import RoutingPort, RoutingServiceError, TravelMatrix
 from .planning_policy import PlanningPolicyError
 
 
@@ -50,7 +49,7 @@ class QlooPort(Protocol):
 class ItineraryComposer(Protocol):
     async def compose(
         self, request: TasteRouteRequest, candidates: list[PlaceCandidate],
-        travel_matrix=None,
+        travel_matrix: TravelMatrix | None = None,
         correction: str | None = None,
     ) -> list[ItineraryDay]: ...
 
@@ -91,7 +90,6 @@ def allowed_actions(state: PlanningState) -> tuple[PlanningAction, ...]:
 
 
 def _observation(state: PlanningState) -> PlanningObservation:
-    actions = _actions(state)
     if state.locality is None:
         stage = "locality"
     elif not state.candidates:
@@ -141,7 +139,6 @@ def validate_itinerary(
     request: TasteRouteRequest,
     candidates: list[PlaceCandidate],
     days: list[ItineraryDay],
-    route_lookup=None,
 ) -> list[ItineraryDay]:
     """Validate provenance, dates, ordering, and the non-empty completion invariant."""
     non_empty = [day for day in days if day.items]
@@ -261,20 +258,20 @@ class TasteRouteOrchestrator:
         self, state: PlanningState, action: PlanningAction,
     ) -> tuple[str, dict[str, int | float]]:
         if action is PlanningAction.RESOLVE_LOCALITY:
-            state.locality_results = await self._qloo.resolve_localities(
+            locality_results = await self._qloo.resolve_localities(
                 state.request.destination, take=5
             )
-            if state.locality_results:
+            if locality_results:
                 selected = self._select_locality(
-                    state.request.destination, state.locality_results
+                    state.request.destination, locality_results
                 )
                 state.locality = ResolvedLocality(id=selected.id, name=selected.name)
                 log_planning_event(
                     "locality.resolved", request_id=state.request_id,
                     locality_id=selected.id, locality_name=selected.name,
-                    raw_count=len(state.locality_results),
+                    raw_count=len(locality_results),
                 )
-                return "completed", {"result_count": len(state.locality_results)}
+                return "completed", {"result_count": len(locality_results)}
             state.warnings.append("Qloo could not resolve this destination.")
             log_planning_event("locality.failed", request_id=state.request_id, raw_count=0)
             return "failed", {"result_count": 0}
@@ -291,7 +288,6 @@ class TasteRouteOrchestrator:
             report = validate_candidates(
                 discovered, excluded_ids=set(state.request.excluded_place_ids)
             )
-            state.raw_candidate_count += len(discovered)
             state.rejected_count += (
                 report.duplicate_count + report.excluded_count
                 + report.missing_coordinates_count
@@ -341,7 +337,6 @@ class TasteRouteOrchestrator:
                 if action is PlanningAction.REPAIR_ITINERARY:
                     state.routing_attempted = False
                     state.routes = []
-                if action is PlanningAction.REPAIR_ITINERARY:
                     state.warnings.append("The itinerary required one automatic repair pass.")
                 return (
                     "repaired" if action is PlanningAction.REPAIR_ITINERARY else "completed",
@@ -349,7 +344,6 @@ class TasteRouteOrchestrator:
                 )
             except (ItineraryComposerError, CandidateValidationError) as error:
                 state.days = []
-                state.last_error_code = type(error).__name__
                 log_planning_event(
                     "composition.failed", request_id=state.request_id,
                     attempt=state.composition_attempts, error=error,
@@ -375,7 +369,6 @@ class TasteRouteOrchestrator:
             except CandidateValidationError as error:
                 state.days = []
                 state.routes = []
-                state.last_error_code = type(error).__name__
                 return "failed", {"route_count": 0}
             except RoutingServiceError as error:
                 state.routes = []
@@ -435,11 +428,6 @@ class TasteRouteOrchestrator:
         tags = list(dict.fromkeys(
             tag for candidate in state.candidates for tag in candidate.tags
         ))[:8]
-        trace = [WorkflowStep(
-            key=decision.action,
-            label=decision.action.replace("_", " ").title(),
-            status=decision.status,
-        ) for decision in state.decisions]
         log_planning_event(
             f"plan.{completion}", request_id=state.request_id,
             candidate_count=len(state.candidates), stop_count=state.stop_count,
@@ -460,7 +448,6 @@ class TasteRouteOrchestrator:
                 candidates=state.candidates,
                 days=state.days,
                 warnings=state.warnings,
-                trace=trace,
                 completion_status=completion,
                 locality=state.locality,
                 decisions=state.decisions,

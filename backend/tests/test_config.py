@@ -72,6 +72,11 @@ def test_validate_config_rejects_non_http_service_endpoints(overrides):
         validate_config(_settings(**overrides))
 
 
+def test_validate_config_rejects_non_http_routing_endpoint():
+    with pytest.raises(ValueError, match="Routing Base URL"):
+        validate_config(_settings(routing_base_url="file:///tmp/router"))
+
+
 def test_legacy_provider_specific_settings_do_not_configure_llm():
     candidate = Settings(
         _env_file=None,

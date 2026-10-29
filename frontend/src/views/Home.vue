@@ -4,7 +4,7 @@
       <div class="route-motif" aria-hidden="true"><span></span><span></span><span></span></div>
       <p class="eyebrow">QLOO-POWERED TRAVEL AGENT</p>
       <h1>Travel through the lens of what you already love.</h1>
-      <p class="intro">Choose films, artists, books, or places you love. TasteRoute uses Qloo's cultural intelligence to discover real places at your destination, then turns that evidence into a practical itinerary.</p>
+      <p class="intro">Choose films, music, books, or places you love. TasteRoute uses Qloo's cultural intelligence to discover real places at your destination, then turns that evidence into a practical itinerary.</p>
     </section>
 
     <form class="planner" :aria-busy="loading" @submit.prevent="handleSubmit">

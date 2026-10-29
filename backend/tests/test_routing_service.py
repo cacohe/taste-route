@@ -112,3 +112,88 @@ async def test_timeout_is_safely_classified():
     assert captured.value.code == "ROUTING_TIMEOUT"
     assert captured.value.retryable is True
     assert "secret URL" not in str(captured.value)
+
+
+@pytest.mark.anyio
+async def test_matrix_rejects_mismatched_dimensions_as_safe_invalid_response():
+    service = OSRMRoutingService(
+        "https://router.example", timeout_seconds=3,
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json={
+            "code": "Ok",
+            "durations": [[0, 600]],
+            "distances": [[0, 5200], [5200, 0]],
+        })),
+    )
+
+    with pytest.raises(RoutingServiceError) as captured:
+        await service.build_matrix(candidates())
+
+    assert captured.value.code == "ROUTING_INVALID_RESPONSE"
+    assert captured.value.retryable is True
+
+
+def test_matrix_rejects_non_finite_values():
+    assert OSRMRoutingService._valid_matrix([[0, float("inf")], [600, 0]], 2) is False
+
+
+def test_coordinate_accepts_western_and_southern_hemispheres():
+    assert OSRMRoutingService._valid_coordinate([-58.3816, -34.6037]) is True
+
+
+@pytest.mark.anyio
+async def test_route_rejects_malformed_leg_without_leaking_provider_data():
+    service = OSRMRoutingService(
+        "https://router.example", timeout_seconds=3,
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json={
+            "code": "Ok", "routes": [{
+                "distance": 5200, "duration": 600,
+                "geometry": {"type": "LineString", "coordinates": [[121.47, 31.23], [121.5, 31.25]]},
+                "legs": [{"duration": "provider-secret"}],
+            }],
+        })),
+    )
+
+    with pytest.raises(RoutingServiceError) as captured:
+        await service.route_day(day(), {item.id: item for item in candidates()})
+
+    assert captured.value.code == "ROUTING_INVALID_RESPONSE"
+    assert "provider-secret" not in str(captured.value)
+
+
+@pytest.mark.anyio
+async def test_route_rejects_out_of_range_geometry():
+    service = OSRMRoutingService(
+        "https://router.example", timeout_seconds=3,
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json={
+            "code": "Ok", "routes": [{
+                "distance": 5200, "duration": 600,
+                "geometry": {"type": "LineString", "coordinates": [[181, 31.23], [121.5, 31.25]]},
+                "legs": [{"distance": 5200, "duration": 600}],
+            }],
+        })),
+    )
+
+    with pytest.raises(RoutingServiceError) as captured:
+        await service.route_day(day(), {item.id: item for item in candidates()})
+
+    assert captured.value.code == "ROUTING_INVALID_RESPONSE"
+
+
+@pytest.mark.anyio
+async def test_route_rejects_non_finite_metrics_as_safe_invalid_response():
+    payload = (
+        b'{"code":"Ok","routes":[{"distance":5200,"duration":600,'
+        b'"geometry":{"coordinates":[[121.47,31.23],[121.5,31.25]]},'
+        b'"legs":[{"distance":Infinity,"duration":600}]}]}'
+    )
+    service = OSRMRoutingService(
+        "https://router.example", timeout_seconds=3,
+        transport=httpx.MockTransport(lambda request: httpx.Response(
+            200, content=payload, headers={"content-type": "application/json"}
+        )),
+    )
+
+    with pytest.raises(RoutingServiceError) as captured:
+        await service.route_day(day(), {item.id: item for item in candidates()})
+
+    assert captured.value.code == "ROUTING_INVALID_RESPONSE"

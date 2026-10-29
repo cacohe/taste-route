@@ -54,12 +54,6 @@ export interface ItineraryDay {
   items: ItineraryItem[]
 }
 
-export interface WorkflowStep {
-  key: string
-  label: string
-  status: 'active' | 'completed' | 'repaired' | 'skipped' | 'failed'
-}
-
 export type PlanningAction = 'resolve_locality' | 'discover_strict' | 'discover_nearby'
   | 'compose_itinerary' | 'repair_itinerary' | 'build_routes' | 'finish' | 'fail'
 
@@ -98,7 +92,6 @@ export interface TasteRoutePlan {
   candidates: PlaceCandidate[]
   days: ItineraryDay[]
   warnings: string[]
-  trace: WorkflowStep[]
   completion_status: 'completed' | 'partial' | 'failed'
   locality: ResolvedLocality | null
   decisions: AgentDecision[]

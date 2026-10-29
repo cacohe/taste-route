@@ -1,13 +1,18 @@
 """Private contracts for TasteRoute's bounded planning controller."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from pydantic import BaseModel, Field
 
-from .qloo import PlaceCandidate, QlooEntity
+from .qloo import PlaceCandidate
 from .schemas import AgentDecision, ItineraryDay, ItineraryRoute, ResolvedLocality, TasteRouteRequest
+
+if TYPE_CHECKING:
+    from ..services.routing_service import TravelMatrix
 
 
 class PlanningAction(StrEnum):
@@ -59,11 +64,9 @@ class PlanningState:
     request: TasteRouteRequest
     max_decisions: int
     locality: ResolvedLocality | None = None
-    locality_results: list[QlooEntity] = field(default_factory=list)
     seed_ids: list[str] = field(default_factory=list)
     seed_names: dict[str, str] = field(default_factory=dict)
     discovery_attempts: int = 0
-    raw_candidate_count: int = 0
     rejected_count: int = 0
     candidates: list[PlaceCandidate] = field(default_factory=list)
     days: list[ItineraryDay] = field(default_factory=list)
@@ -74,8 +77,7 @@ class PlanningState:
     routing_attempted: bool = False
     routing_available: bool = False
     matrix_attempted: bool = False
-    travel_matrix: object | None = None
-    last_error_code: str | None = None
+    travel_matrix: TravelMatrix | None = None
 
     @property
     def stop_count(self) -> int:

@@ -15,7 +15,6 @@ const result: TasteRouteResponse = {
     candidates: [],
     days: [],
     warnings: [],
-    trace: [],
     completion_status: 'completed', locality: { id: 'tokyo', name: 'Tokyo' }, decisions: [], routes: [],
   },
   error_code: null,

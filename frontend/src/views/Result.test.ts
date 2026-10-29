@@ -14,7 +14,7 @@ const ItineraryMapStub = {
 
 const plan: TasteRoutePlan = {
   request_id: 'request-1', destination: 'Tokyo', start_date: '2026-11-10', end_date: '2026-11-10',
-  taste_profile: { tags: ['Animation'], seeds: [] }, warnings: [], trace: [],
+  taste_profile: { tags: ['Animation'], seeds: [] }, warnings: [],
   completion_status: 'completed', locality: { id: 'tokyo-id', name: 'Tokyo Metropolis' },
   decisions: [{ iteration: 1, action: 'resolve_locality', status: 'completed', reason: 'Matched by Qloo.', metrics: { result_count: 2 } }],
   routes: [{

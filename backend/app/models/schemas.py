@@ -53,12 +53,6 @@ class TasteProfile(BaseModel):
     seeds: list[TasteSeed] = Field(default_factory=list)
 
 
-class WorkflowStep(BaseModel):
-    key: str
-    label: str
-    status: str = Field(pattern="^(active|completed|repaired|skipped|failed)$")
-
-
 class ItineraryItem(BaseModel):
     place_id: str
     start_time: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -118,8 +112,7 @@ class TasteRoutePlan(BaseModel):
     candidates: list[PlaceCandidate] = Field(default_factory=list)
     days: list[ItineraryDay] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
-    trace: list[WorkflowStep] = Field(default_factory=list)
-    completion_status: Literal["completed", "partial", "failed"] = "completed"
+    completion_status: Literal["completed", "partial", "failed"]
     locality: ResolvedLocality | None = None
     decisions: list[AgentDecision] = Field(default_factory=list)
     routes: list[ItineraryRoute] = Field(default_factory=list)

@@ -1,20 +1,13 @@
 """Provider-neutral routing port and an optional OSRM driving adapter."""
 
 from dataclasses import dataclass
+from math import isfinite
 from typing import Protocol
 
 import httpx
 
 from ..models.qloo import PlaceCandidate
 from ..models.schemas import ItineraryDay, ItineraryRoute, TravelLeg
-
-
-@dataclass(frozen=True)
-class TravelEstimate:
-    from_place_id: str
-    to_place_id: str
-    distance_meters: float | None
-    duration_minutes: float | None
 
 
 @dataclass(frozen=True)
@@ -104,7 +97,8 @@ class OSRMRoutingService:
         )
         durations = payload.get("durations")
         distances = payload.get("distances")
-        if not isinstance(durations, list) or not isinstance(distances, list):
+        size = len(candidates)
+        if not self._valid_matrix(durations, size) or not self._valid_matrix(distances, size):
             raise RoutingServiceError(
                 "ROUTING_INVALID_RESPONSE", "Routing returned invalid data.", retryable=True
             )
@@ -112,6 +106,49 @@ class OSRMRoutingService:
             place_ids=[candidate.id for candidate in candidates],
             durations_seconds=durations,
             distances_meters=distances,
+        )
+
+    @staticmethod
+    def _valid_matrix(value: object, size: int) -> bool:
+        return (
+            isinstance(value, list)
+            and len(value) == size
+            and all(
+                isinstance(row, list)
+                and len(row) == size
+                and all(
+                    cell is None
+                    or OSRMRoutingService._valid_number(cell)
+                    for cell in row
+                )
+                for row in value
+            )
+        )
+
+    @staticmethod
+    def _valid_number(value: object) -> bool:
+        return (
+            OSRMRoutingService._finite_number(value)
+            and value >= 0
+        )
+
+    @staticmethod
+    def _finite_number(value: object) -> bool:
+        return (
+            isinstance(value, (int, float))
+            and not isinstance(value, bool)
+            and isfinite(value)
+        )
+
+    @classmethod
+    def _valid_coordinate(cls, point: object) -> bool:
+        return (
+            isinstance(point, list)
+            and len(point) == 2
+            and cls._finite_number(point[0])
+            and cls._finite_number(point[1])
+            and -180 <= point[0] <= 180
+            and -90 <= point[1] <= 90
         )
 
     async def route_day(
@@ -134,26 +171,43 @@ class OSRMRoutingService:
                 "ROUTING_NO_ROUTE", "No driving route was found.", retryable=True
             )
         route = routes[0]
-        geometry = route.get("geometry", {}).get("coordinates")
-        provider_legs = route.get("legs")
-        if not isinstance(geometry, list) or not isinstance(provider_legs, list):
+        if not isinstance(route, dict):
             raise RoutingServiceError(
                 "ROUTING_INVALID_RESPONSE", "Routing returned invalid data.", retryable=True
             )
-        legs = []
-        for index, provider_leg in enumerate(provider_legs):
-            if index + 1 >= len(day.items):
-                break
-            legs.append(TravelLeg(
+        try:
+            geometry = route["geometry"]["coordinates"]
+            provider_legs = route["legs"]
+            if (
+                not isinstance(geometry, list)
+                or len(geometry) < 2
+                or not all(self._valid_coordinate(point) for point in geometry)
+                or not isinstance(provider_legs, list)
+                or len(provider_legs) != max(0, len(day.items) - 1)
+                or not self._valid_number(route.get("distance"))
+                or not self._valid_number(route.get("duration"))
+                or not all(
+                    isinstance(provider_leg, dict)
+                    and self._valid_number(provider_leg.get("distance"))
+                    and self._valid_number(provider_leg.get("duration"))
+                    for provider_leg in provider_legs
+                )
+            ):
+                raise ValueError("invalid route shape")
+            legs = [TravelLeg(
                 from_place_id=day.items[index].place_id,
                 to_place_id=day.items[index + 1].place_id,
                 distance_meters=round(float(provider_leg["distance"])),
                 duration_minutes=round(float(provider_leg["duration"]) / 60),
-            ))
-        return ItineraryRoute(
-            date=day.date,
-            geometry=geometry,
-            legs=legs,
-            distance_meters=round(float(route.get("distance", 0))),
-            duration_minutes=round(float(route.get("duration", 0)) / 60),
-        )
+            ) for index, provider_leg in enumerate(provider_legs)]
+            return ItineraryRoute(
+                date=day.date,
+                geometry=geometry,
+                legs=legs,
+                distance_meters=round(float(route["distance"])),
+                duration_minutes=round(float(route["duration"]) / 60),
+            )
+        except (KeyError, OverflowError, TypeError, ValueError) as exc:
+            raise RoutingServiceError(
+                "ROUTING_INVALID_RESPONSE", "Routing returned invalid data.", retryable=True
+            ) from exc

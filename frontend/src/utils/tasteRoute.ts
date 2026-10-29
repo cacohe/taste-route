@@ -44,6 +44,7 @@ export function parseStoredTasteRoutePlan(raw: string | null): TasteRoutePlan | 
       || !isLocality(value.locality)
       || !isDecisionArray(value.decisions)
       || !isRouteArray(value.routes)
+      || (value.completion_status === 'completed' && !hasItineraryStops(value.days))
     ) return null
     return value as unknown as TasteRoutePlan
   } catch {
@@ -105,6 +106,12 @@ function isDayArray(value: unknown): boolean {
       && isString(item.reason)
     ))
   })
+}
+
+function hasItineraryStops(value: unknown): boolean {
+  return Array.isArray(value) && value.some((day) => (
+    isRecord(day) && Array.isArray(day.items) && day.items.length > 0
+  ))
 }
 
 const actions = new Set([

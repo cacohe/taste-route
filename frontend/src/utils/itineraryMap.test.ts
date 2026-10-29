@@ -13,7 +13,7 @@ function candidate(id: string, longitude: number | null, latitude: number | null
 function plan(overrides: Partial<TasteRoutePlan> = {}): TasteRoutePlan {
   return {
     request_id: 'request-1', destination: 'Tokyo', start_date: '2026-11-10', end_date: '2026-11-11',
-    taste_profile: { tags: [], seeds: [] }, warnings: [], trace: [],
+    taste_profile: { tags: [], seeds: [] }, warnings: [],
     completion_status: 'completed', locality: null, decisions: [], routes: [],
     candidates: [candidate('a', 139.70, 35.68), candidate('b', 139.71, 35.69), candidate('unused', 139.72, 35.70)],
     days: [

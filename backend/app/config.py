@@ -128,6 +128,8 @@ def validate_config(candidate: Settings | None = None):
         errors.append("QLOO_API_KEY未配置")
     if not _is_http_endpoint(active_settings.qloo_api_base_url):
         errors.append("Qloo Base URL必须是有效的HTTP(S)地址")
+    if not _is_http_endpoint(active_settings.routing_base_url):
+        errors.append("Routing Base URL必须是有效的HTTP(S)地址")
 
     llm_config = active_settings.get_llm_config()
     if not llm_config["api_key"]:

@@ -1,6 +1,6 @@
 # TasteRoute
 
-TasteRoute is a taste-grounded travel agent built for the Qloo Agentic Hackathon. Instead of asking users to pick generic categories, it starts from cultural references they genuinely like—films, artists, books, brands, and places—and uses Qloo to discover relevant experiences in a destination.
+TasteRoute is a taste-grounded travel agent built for the Qloo Agentic Hackathon. Instead of asking users to pick generic categories, it starts from cultural references they genuinely like—films, music artists, books, brands, and places—and uses Qloo to discover relevant experiences in a destination.
 
 **Live demo:** [taste-route-ch14.onrender.com](https://taste-route-ch14.onrender.com)
 
@@ -17,7 +17,7 @@ TasteRoute is a taste-grounded travel agent built for the Qloo Agentic Hackathon
 - One bounded repair pass when the model returns an empty, infeasible, or provenance-invalid itinerary.
 - Structured LangChain itinerary composition constrained to validated candidate IDs.
 - Taste DNA, scored Qloo contribution signals, and the real agent decision trace.
-- Real workflow progress streamed from the Qloo/LLM orchestration stages without fabricated percentages.
+- Real bounded-agent decisions streamed in execution order without fabricated percentages.
 - Global MapLibre street map with OpenFreeMap, OSRM driving geometry and legs, geometric fallback, and card/map linkage.
 - Public-demo rate limits, bounded concurrency, short-lived response caches, and a same-origin Docker deployment.
 
@@ -72,14 +72,14 @@ pnpm dev
 
 Open `http://localhost:5173`; backend API docs are at `http://localhost:8000/docs`.
 
-### Required backend environment
+### Backend environment
 
 | Variable | Purpose |
 | --- | --- |
-| `QLOO_API_KEY` | Qloo Hackathon API credential; never expose it as `VITE_*` |
+| `QLOO_API_KEY` | Required Qloo Hackathon API credential; never expose it as `VITE_*` |
 | `QLOO_API_BASE_URL` | Defaults to `https://hackathon.api.qloo.com` |
-| `LLM_API_KEY` | Key for the structured itinerary composer |
-| `LLM_BASE_URL` / `LLM_MODEL` | OpenAI-compatible endpoint and model; no provider is selected by default |
+| `LLM_API_KEY` | Required key for the structured decision policy and itinerary composer |
+| `LLM_BASE_URL` / `LLM_MODEL` | Required OpenAI-compatible endpoint and model; no provider is selected by default |
 | `CORS_ORIGINS` | Comma-separated frontend origins |
 | `AGENT_MAX_DECISIONS` | Hard planning-action budget; default `8` |
 | `QLOO_NEARBY_RADIUS_METERS` | One nearby retry radius; default `10000` |
