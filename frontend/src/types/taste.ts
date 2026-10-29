@@ -60,6 +60,35 @@ export interface WorkflowStep {
   status: 'active' | 'completed' | 'repaired' | 'skipped' | 'failed'
 }
 
+export type PlanningAction = 'resolve_locality' | 'discover_strict' | 'discover_nearby'
+  | 'compose_itinerary' | 'repair_itinerary' | 'build_routes' | 'finish' | 'fail'
+
+export interface AgentDecision {
+  iteration: number
+  action: PlanningAction
+  status: 'active' | 'completed' | 'repaired' | 'skipped' | 'failed'
+  reason: string
+  metrics: Record<string, number>
+}
+
+export interface ResolvedLocality { id: string; name: string }
+
+export interface TravelLeg {
+  from_place_id: string
+  to_place_id: string
+  distance_meters: number
+  duration_minutes: number
+}
+
+export interface ItineraryRoute {
+  date: string
+  profile: 'driving'
+  geometry: Array<[number, number]>
+  legs: TravelLeg[]
+  distance_meters: number
+  duration_minutes: number
+}
+
 export interface TasteRoutePlan {
   request_id: string
   destination: string
@@ -70,6 +99,10 @@ export interface TasteRoutePlan {
   days: ItineraryDay[]
   warnings: string[]
   trace: WorkflowStep[]
+  completion_status: 'completed' | 'partial' | 'failed'
+  locality: ResolvedLocality | null
+  decisions: AgentDecision[]
+  routes: ItineraryRoute[]
 }
 
 export interface TasteRouteResponse {

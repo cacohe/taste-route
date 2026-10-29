@@ -13,6 +13,7 @@ describe('parseStoredTasteRoutePlan', () => {
       request_id: 'request-1', destination: 'Tokyo',
       start_date: '2026-11-10', end_date: '2026-11-11',
       taste_profile: { tags: [] }, warnings: [],
+      completion_status: 'completed', locality: null, decisions: [], routes: [],
     }
 
     expect(parseStoredTasteRoutePlan(JSON.stringify({
@@ -33,9 +34,25 @@ describe('parseStoredTasteRoutePlan', () => {
       candidates: [],
       days: [],
       warnings: [],
+      completion_status: 'completed',
+      locality: null,
+      decisions: [],
+      routes: [],
     })
 
     expect(parseStoredTasteRoutePlan(raw)?.request_id).toBe('request-1')
+  })
+
+  it('rejects invalid decisions, completion status, route geometry, and legs', () => {
+    const base = {
+      request_id: 'request-1', destination: 'Tokyo', start_date: '2026-11-10', end_date: '2026-11-11',
+      taste_profile: { tags: [] }, candidates: [], days: [], warnings: [], trace: [],
+      completion_status: 'completed', locality: null, decisions: [], routes: [],
+    }
+    expect(parseStoredTasteRoutePlan(JSON.stringify({ ...base, completion_status: 'done' }))).toBeNull()
+    expect(parseStoredTasteRoutePlan(JSON.stringify({ ...base, decisions: [{ iteration: 1, action: 'browse_web', status: 'completed', reason: 'x', metrics: {} }] }))).toBeNull()
+    expect(parseStoredTasteRoutePlan(JSON.stringify({ ...base, routes: [{ date: '2026-11-10', profile: 'driving', geometry: [['bad', 1]], legs: [], distance_meters: 1, duration_minutes: 1 }] }))).toBeNull()
+    expect(parseStoredTasteRoutePlan(JSON.stringify({ ...base, routes: [{ date: '2026-11-10', profile: 'driving', geometry: [[1, 2]], legs: [{ from_place_id: 'a' }], distance_meters: 1, duration_minutes: 1 }] }))).toBeNull()
   })
 })
 

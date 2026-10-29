@@ -24,6 +24,7 @@ export interface ItineraryMapRoute {
   date: string
   color: string
   coordinates: Array<[number, number]>
+  profile: 'driving' | 'geometric'
 }
 
 export interface ItineraryMapModel {
@@ -78,7 +79,15 @@ export function buildItineraryMapModel(plan: TasteRoutePlan): ItineraryMapModel 
         kind: 'itinerary',
       })
     })
-    if (routeCoordinates.length > 1) routes.push({ date: day.date, color, coordinates: routeCoordinates })
+    if (routeCoordinates.length > 1) {
+      const routed = plan.routes.find((route) => route.date === day.date && route.geometry.length > 1)
+      routes.push({
+        date: day.date,
+        color,
+        coordinates: routed?.geometry ?? routeCoordinates,
+        profile: routed ? 'driving' : 'geometric',
+      })
+    }
   })
   return { markers: markers.length ? markers : candidateMarkers(plan.candidates), routes }
 }

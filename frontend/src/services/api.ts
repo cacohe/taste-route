@@ -3,7 +3,7 @@ import type {
   TasteEntitySearchResponse,
   TasteRouteRequest,
   TasteRouteResponse,
-  WorkflowStep,
+  AgentDecision,
 } from '@/types/taste'
 import { getErrorMessage } from '@/utils/errorMessage'
 import { consumeTripPlanStream } from './tripStream'
@@ -32,7 +32,7 @@ export async function generateTripPlan(formData: TasteRouteRequest): Promise<Tas
 
 export async function generateTripPlanStream(
   formData: TasteRouteRequest,
-  onProgress: (step: WorkflowStep) => void,
+  onProgress: (decision: AgentDecision) => void,
   signal?: AbortSignal,
 ): Promise<TasteRouteResponse> {
   const response = await fetch(`${API_BASE_URL.replace(/\/$/, '')}/api/trip/plan/stream`, {

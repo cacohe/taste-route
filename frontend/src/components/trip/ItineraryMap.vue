@@ -4,6 +4,8 @@
     <p v-if="model.routes.length === 0 && model.markers.some((marker) => marker.kind === 'candidate')" class="map-note">
       Discovered Qloo places are shown while itinerary composition is unavailable.
     </p>
+    <p v-else-if="model.routes.some((route) => route.profile === 'driving')" class="route-note">Road geometry · OSRM driving</p>
+    <p v-else-if="model.routes.length" class="route-note">Straight-line fallback · driving route unavailable</p>
     <p v-if="mapError" class="map-error" role="alert">{{ mapError }}</p>
   </article>
 </template>
@@ -112,7 +114,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .map-card { position: relative; min-height: 330px; overflow: hidden; border-radius: 18px; background: #e6e0d7; box-shadow: 0 18px 45px rgba(45,30,80,.12); }
 .map { width: 100%; height: 100%; min-height: 330px; }
-.map-error, .map-note { position: absolute; inset: auto 12px 12px; margin: 0; padding: 10px 12px; border-radius: 9px; background: rgba(255,255,255,.94); color: #4f445d; font-size: .78rem; box-shadow: 0 4px 18px #33264d22; }
+.map-error, .map-note, .route-note { position: absolute; inset: auto 12px 12px; margin: 0; padding: 10px 12px; border-radius: 9px; background: rgba(255,255,255,.94); color: #4f445d; font-size: .78rem; box-shadow: 0 4px 18px #33264d22; }
 .map-error { color: #9b3348; }.map-note + .map-error { bottom: 58px; }
 :global(.taste-marker) { min-width: 34px; height: 30px; padding: 0 7px; border: 2px solid white; border-radius: 999px; background: var(--marker-color, #6342ad); color: white; font-size: .7rem; font-weight: 800; box-shadow: 0 3px 9px #51436866; cursor: pointer; transition: transform .16s ease, box-shadow .16s ease; }
 :global(.taste-marker.is-candidate) { opacity: .78; }

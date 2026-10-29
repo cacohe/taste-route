@@ -18,7 +18,13 @@ import { computed } from 'vue'
 import type { ItineraryItem, PlaceCandidate } from '@/types/taste'
 
 const props = defineProps<{ item: ItineraryItem; candidate: PlaceCandidate | null }>()
-const namedSignals = computed(() => props.candidate?.contributions.flatMap((signal) => signal.name ? [signal.name] : []) ?? [])
+const namedSignals = computed(() => (props.candidate?.contributions ?? [])
+  .filter((signal) => Boolean(signal.name))
+  .sort((left, right) => (right.score ?? -1) - (left.score ?? -1))
+  .slice(0, 2)
+  .map((signal) => signal.score === null
+    ? signal.name!
+    : `${signal.name} ${Math.round(signal.score * 100)}%`))
 </script>
 
 <style scoped>

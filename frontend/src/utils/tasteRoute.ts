@@ -40,6 +40,10 @@ export function parseStoredTasteRoutePlan(raw: string | null): TasteRoutePlan | 
       || !isCandidateArray(value.candidates)
       || !isDayArray(value.days)
       || !isStringArray(value.warnings)
+      || !['completed', 'partial', 'failed'].includes(String(value.completion_status))
+      || !isLocality(value.locality)
+      || !isDecisionArray(value.decisions)
+      || !isRouteArray(value.routes)
     ) return null
     return value as unknown as TasteRoutePlan
   } catch {
@@ -101,4 +105,43 @@ function isDayArray(value: unknown): boolean {
       && isString(item.reason)
     ))
   })
+}
+
+const actions = new Set([
+  'resolve_locality', 'discover_strict', 'discover_nearby', 'compose_itinerary',
+  'repair_itinerary', 'build_routes', 'finish', 'fail',
+])
+const statuses = new Set(['active', 'completed', 'repaired', 'skipped', 'failed'])
+
+function isLocality(value: unknown): boolean {
+  return value === null || (isRecord(value) && isString(value.id) && isString(value.name))
+}
+
+function isDecisionArray(value: unknown): boolean {
+  return Array.isArray(value) && value.every((decision) => (
+    isRecord(decision)
+    && Number.isInteger(decision.iteration) && Number(decision.iteration) > 0
+    && typeof decision.action === 'string' && actions.has(decision.action)
+    && typeof decision.status === 'string' && statuses.has(decision.status)
+    && isString(decision.reason)
+    && isRecord(decision.metrics)
+    && Object.values(decision.metrics).every((metric) => typeof metric === 'number' && Number.isFinite(metric))
+  ))
+}
+
+function isRouteArray(value: unknown): boolean {
+  return Array.isArray(value) && value.every((route) => (
+    isRecord(route) && isString(route.date) && route.profile === 'driving'
+    && Array.isArray(route.geometry)
+    && route.geometry.every((point) => Array.isArray(point) && point.length === 2 && point.every((coordinate) => typeof coordinate === 'number' && Number.isFinite(coordinate)))
+    && Array.isArray(route.legs) && route.legs.every((leg) => (
+      isRecord(leg) && isString(leg.from_place_id) && isString(leg.to_place_id)
+      && isNonNegativeNumber(leg.distance_meters) && isNonNegativeNumber(leg.duration_minutes)
+    ))
+    && isNonNegativeNumber(route.distance_meters) && isNonNegativeNumber(route.duration_minutes)
+  ))
+}
+
+function isNonNegativeNumber(value: unknown): boolean {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
 }

@@ -68,7 +68,7 @@ import { useRouter } from 'vue-router'
 import TasteEntitySearch from '@/components/taste/TasteEntitySearch.vue'
 import GenerationProgress from '@/components/trip/GenerationProgress.vue'
 import { generateTripPlanStream } from '@/services/api'
-import type { TasteRouteRequest, TasteSeed, WorkflowStep } from '@/types/taste'
+import type { AgentDecision, TasteRouteRequest, TasteSeed } from '@/types/taste'
 import { validateTasteRouteDraft } from '@/utils/tasteRoute'
 
 const router = useRouter()
@@ -81,7 +81,7 @@ const constraintsText = ref('')
 const tasteSeeds = ref<TasteSeed[]>([])
 const loading = ref(false)
 const validationError = ref('')
-const progressEvents = ref<WorkflowStep[]>([])
+const progressEvents = ref<AgentDecision[]>([])
 const elapsedSeconds = ref(0)
 const retryAvailable = ref(false)
 let elapsedTimer: ReturnType<typeof setInterval> | null = null

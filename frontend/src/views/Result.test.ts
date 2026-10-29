@@ -15,6 +15,13 @@ const ItineraryMapStub = {
 const plan: TasteRoutePlan = {
   request_id: 'request-1', destination: 'Tokyo', start_date: '2026-11-10', end_date: '2026-11-10',
   taste_profile: { tags: ['Animation'], seeds: [] }, warnings: [], trace: [],
+  completion_status: 'completed', locality: { id: 'tokyo-id', name: 'Tokyo Metropolis' },
+  decisions: [{ iteration: 1, action: 'resolve_locality', status: 'completed', reason: 'Matched by Qloo.', metrics: { result_count: 2 } }],
+  routes: [{
+    date: '2026-11-10', profile: 'driving', geometry: [[139.8, 35.7], [139.7, 35.6]],
+    legs: [{ from_place_id: 'b', to_place_id: 'a', distance_meters: 2400, duration_minutes: 14 }],
+    distance_meters: 2400, duration_minutes: 14,
+  }],
   candidates: [
     { id: 'a', name: 'Place A', address: null, description: null, image_url: null, latitude: 35.6, longitude: 139.7, affinity: .8, tags: [], contributions: [] },
     { id: 'b', name: 'Place B', address: null, description: null, image_url: null, latitude: 35.7, longitude: 139.8, affinity: .7, tags: [], contributions: [] },
@@ -51,5 +58,14 @@ describe('Result map and itinerary linkage', () => {
 
     await wrapper.get('[data-marker-id="2026-11-10-1-a"]').trigger('click')
     expect(wrapper.get('[data-test="map-select"]').text()).toBe('2026-11-10-1-a')
+  })
+
+  it('shows resolved locality, completion, decisions, and driving leg evidence', async () => {
+    const wrapper = await mountResult()
+    expect(wrapper.text()).toContain('Tokyo Metropolis')
+    expect(wrapper.text()).toContain('Completed')
+    expect(wrapper.text()).toContain('Matched by Qloo.')
+    expect(wrapper.text()).toContain('2.4 km')
+    expect(wrapper.text()).toContain('14 min driving')
   })
 })

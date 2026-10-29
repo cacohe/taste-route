@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { TasteRouteResponse, WorkflowStep } from '@/types/taste'
+import type { AgentDecision, TasteRouteResponse } from '@/types/taste'
 import { consumeTripPlanStream } from './tripStream'
 
 const result: TasteRouteResponse = {
@@ -16,6 +16,7 @@ const result: TasteRouteResponse = {
     days: [],
     warnings: [],
     trace: [],
+    completion_status: 'completed', locality: { id: 'tokyo', name: 'Tokyo' }, decisions: [], routes: [],
   },
   error_code: null,
   retryable: false,
@@ -33,10 +34,10 @@ function streamingResponse(...chunks: string[]): Response {
 
 describe('consumeTripPlanStream', () => {
   it('preserves partial NDJSON lines across byte chunks', async () => {
-    const onProgress = vi.fn<(step: WorkflowStep) => void>()
+    const onProgress = vi.fn<(decision: AgentDecision) => void>()
     const progress = JSON.stringify({
       type: 'progress',
-      step: { key: 'taste_resolution', label: 'Resolve taste signals', status: 'completed' },
+      decision: { iteration: 1, action: 'resolve_locality', status: 'completed', reason: 'Resolved.', metrics: { result_count: 2 } },
     })
     const terminal = JSON.stringify({ type: 'result', response: result })
 
@@ -46,7 +47,7 @@ describe('consumeTripPlanStream', () => {
     )
 
     expect(onProgress).toHaveBeenCalledWith({
-      key: 'taste_resolution', label: 'Resolve taste signals', status: 'completed',
+      iteration: 1, action: 'resolve_locality', status: 'completed', reason: 'Resolved.', metrics: { result_count: 2 },
     })
     expect(response.data?.request_id).toBe('request-1')
   })
@@ -64,7 +65,7 @@ describe('consumeTripPlanStream', () => {
   it('rejects a stream that closes without a result', async () => {
     const progress = JSON.stringify({
       type: 'progress',
-      step: { key: 'taste_resolution', label: 'Resolve taste signals', status: 'active' },
+      decision: { iteration: 1, action: 'resolve_locality', status: 'completed', reason: 'Resolved.', metrics: {} },
     })
 
     await expect(consumeTripPlanStream(streamingResponse(`${progress}\n`), () => {}))

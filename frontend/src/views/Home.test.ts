@@ -49,8 +49,8 @@ describe('Home generation flow', () => {
 
   it('renders real streamed progress while generation is pending', async () => {
     vi.mocked(generateTripPlanStream).mockImplementation(async (_request, onProgress) => {
-      onProgress({ key: 'taste_resolution', label: 'Resolve taste signals', status: 'completed' })
-      onProgress({ key: 'qloo_discovery', label: 'Discover Qloo places', status: 'active' })
+      onProgress({ iteration: 1, action: 'resolve_locality', reason: 'Resolved.', status: 'completed', metrics: {} })
+      onProgress({ iteration: 2, action: 'discover_strict', reason: 'Searching.', status: 'active', metrics: {} })
       return new Promise(() => {})
     })
     const wrapper = await mountHome()
@@ -59,7 +59,7 @@ describe('Home generation flow', () => {
     await flushPromises()
 
     expect(wrapper.find('[aria-label="TasteRoute generation progress"]').exists()).toBe(true)
-    expect(wrapper.get('[data-step="qloo_discovery"]').attributes('data-status')).toBe('active')
+    expect(wrapper.get('[data-action="discover_strict"]').attributes('data-status')).toBe('active')
     expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
     wrapper.unmount()
   })

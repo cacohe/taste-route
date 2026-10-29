@@ -11,45 +11,45 @@
       <span></span>
     </div>
     <ol>
+      <li v-if="!events.length" data-status="active">
+        <span class="step-indicator" aria-hidden="true"></span>
+        <span>Starting bounded planning agent</span><small>In progress</small>
+      </li>
       <li
-        v-for="step in steps"
-        :key="step.key"
-        :data-step="step.key"
-        :data-status="step.status"
+        v-for="decision in events"
+        :key="`${decision.iteration}-${decision.action}`"
+        :data-action="decision.action"
+        :data-status="decision.status"
       >
         <span class="step-indicator" aria-hidden="true"></span>
-        <span>{{ step.label }}</span>
-        <small>{{ statusLabel(step.status) }}</small>
+        <span><strong>{{ actionLabel(decision.action) }}</strong><em>{{ decision.reason }}</em></span>
+        <small>{{ statusLabel(decision.status) }}</small>
       </li>
     </ol>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { WorkflowStep } from '@/types/taste'
+import type { AgentDecision, PlanningAction } from '@/types/taste'
 
-const props = defineProps<{
-  events: WorkflowStep[]
+defineProps<{
+  events: AgentDecision[]
   elapsedSeconds: number
 }>()
 
-const workflow = [
-  { key: 'taste_resolution', label: 'Resolve taste signals' },
-  { key: 'qloo_discovery', label: 'Discover Qloo places' },
-  { key: 'itinerary_composition', label: 'Compose itinerary' },
-]
+type DisplayStatus = AgentDecision['status']
 
-type DisplayStatus = WorkflowStep['status'] | 'pending'
+const actionLabels: Record<PlanningAction, string> = {
+  resolve_locality: 'Resolve destination', discover_strict: 'Search resolved locality',
+  discover_nearby: 'Expand nearby once', compose_itinerary: 'Compose itinerary',
+  repair_itinerary: 'Repair itinerary', build_routes: 'Validate driving routes',
+  finish: 'Finish plan', fail: 'Stop safely',
+}
 
-const steps = computed(() => workflow.map((definition) => {
-  const latest = [...props.events].reverse().find((event) => event.key === definition.key)
-  return { ...definition, status: (latest?.status ?? 'pending') as DisplayStatus }
-}))
+const actionLabel = (action: PlanningAction) => actionLabels[action]
 
 function statusLabel(status: DisplayStatus): string {
   if (status === 'active') return 'In progress'
-  if (status === 'pending') return 'Waiting'
   if (status === 'repaired') return 'Completed after repair'
   return status.charAt(0).toUpperCase() + status.slice(1)
 }
@@ -65,6 +65,7 @@ h3 { margin: 0; color: #2d2144; font: 500 1.25rem/1.2 Georgia, serif; }
 .progress-track span { display: block; width: 38%; height: 100%; border-radius: inherit; background: #6947b7; animation: travel 1.4s ease-in-out infinite alternate; }
 ol { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
 li { display: grid; grid-template-columns: 12px 1fr auto; align-items: center; gap: 10px; color: #6f657b; font-size: .86rem; }
+li span:nth-child(2) { display: grid; gap: 2px; } li em { font-size: .75rem; font-style: normal; font-weight: 400; color: #756a81; }
 li small { font-size: .72rem; }
 .step-indicator { width: 10px; height: 10px; border: 2px solid #b9adc8; border-radius: 50%; }
 li[data-status='active'] { color: #2d2144; font-weight: 700; }

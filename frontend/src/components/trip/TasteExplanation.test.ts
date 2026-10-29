@@ -51,4 +51,19 @@ describe('TasteExplanation', () => {
     expect(wrapper.text()).toContain('Qloo evidence is unavailable')
     expect(wrapper.text()).not.toContain('%')
   })
+
+  it('sorts scored Qloo contributions and displays at most two named signals', () => {
+    const wrapper = mount(TasteExplanation, { props: {
+      item: { place_id: 'museum', start_time: '10:00', duration_minutes: 60, reason: 'Reason' },
+      candidate: { ...candidate, contributions: [
+        { entity_id: 'low', name: 'Low', score: .2 },
+        { entity_id: 'high', name: 'High', score: .9 },
+        { entity_id: 'middle', name: 'Middle', score: .6 },
+      ] },
+    } })
+    expect(wrapper.text()).toContain('High 90%')
+    expect(wrapper.text()).toContain('Middle 60%')
+    expect(wrapper.text()).not.toContain('Low')
+    expect(wrapper.text().indexOf('High')).toBeLessThan(wrapper.text().indexOf('Middle'))
+  })
 })

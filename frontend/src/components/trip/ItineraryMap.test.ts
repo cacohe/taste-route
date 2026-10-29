@@ -52,7 +52,7 @@ const model: ItineraryMapModel = {
     { id: 'day-1-a', placeId: 'a', name: 'Place A', label: 'D1-1', color: '#6342ad', coordinates: [139.7, 35.6], kind: 'itinerary' },
     { id: 'day-1-b', placeId: 'b', name: 'Place B', label: 'D1-2', color: '#6342ad', coordinates: [139.8, 35.7], kind: 'itinerary' },
   ],
-  routes: [{ date: '2026-11-10', color: '#6342ad', coordinates: [[139.7, 35.6], [139.8, 35.7]] }],
+  routes: [{ date: '2026-11-10', color: '#6342ad', coordinates: [[139.7, 35.6], [139.8, 35.7]], profile: 'driving' }],
 }
 
 describe('ItineraryMap', () => {
@@ -68,12 +68,13 @@ describe('ItineraryMap', () => {
   afterEach(() => vi.useRealTimers())
 
   it('renders itinerary-only markers and a route layer', async () => {
-    mount(ItineraryMap, { props: { model, selectedMarkerId: null } })
+    const wrapper = mount(ItineraryMap, { props: { model, selectedMarkerId: null } })
     await flushPromises()
 
     expect(mapState.markers.map((marker) => marker.textContent)).toEqual(['D1-1', 'D1-2'])
     expect(mapState.layers).toHaveLength(2)
     expect(mapState.setWorkerUrl).toHaveBeenCalledWith('/maplibre-worker.js')
+    expect(wrapper.text()).toContain('OSRM driving')
   })
 
   it('emits marker selection and highlights selection from the itinerary list', async () => {

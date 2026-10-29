@@ -14,6 +14,7 @@ function plan(overrides: Partial<TasteRoutePlan> = {}): TasteRoutePlan {
   return {
     request_id: 'request-1', destination: 'Tokyo', start_date: '2026-11-10', end_date: '2026-11-11',
     taste_profile: { tags: [], seeds: [] }, warnings: [], trace: [],
+    completion_status: 'completed', locality: null, decisions: [], routes: [],
     candidates: [candidate('a', 139.70, 35.68), candidate('b', 139.71, 35.69), candidate('unused', 139.72, 35.70)],
     days: [
       { date: '2026-11-10', items: [
@@ -38,7 +39,7 @@ describe('buildItineraryMapModel', () => {
     const model = buildItineraryMapModel(plan())
 
     expect(model.routes).toEqual([
-      expect.objectContaining({ date: '2026-11-10', coordinates: [[139.71, 35.69], [139.70, 35.68]] }),
+      expect.objectContaining({ date: '2026-11-10', coordinates: [[139.71, 35.69], [139.70, 35.68]], profile: 'geometric' }),
     ])
   })
 
@@ -72,5 +73,16 @@ describe('buildItineraryMapModel', () => {
     expect(model.markers.map(({ placeId, kind }) => [placeId, kind])).toEqual([
       ['a', 'candidate'], ['b', 'candidate'], ['unused', 'candidate'],
     ])
+  })
+
+  it('uses backend driving geometry instead of straight stop coordinates', () => {
+    const model = buildItineraryMapModel(plan({ routes: [{
+      date: '2026-11-10', profile: 'driving',
+      geometry: [[139.71, 35.69], [139.715, 35.695], [139.70, 35.68]],
+      legs: [{ from_place_id: 'b', to_place_id: 'a', distance_meters: 2200, duration_minutes: 12 }],
+      distance_meters: 2200, duration_minutes: 12,
+    }] }))
+    expect(model.routes[0].coordinates).toEqual([[139.71, 35.69], [139.715, 35.695], [139.70, 35.68]])
+    expect(model.routes[0].profile).toBe('driving')
   })
 })

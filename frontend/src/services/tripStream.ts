@@ -1,13 +1,13 @@
-import type { TasteRouteResponse, WorkflowStep } from '@/types/taste'
+import type { AgentDecision, TasteRouteResponse } from '@/types/taste'
 
 type StreamRecord =
-  | { type: 'progress'; step: WorkflowStep }
+  | { type: 'progress'; decision: AgentDecision }
   | { type: 'result'; response: TasteRouteResponse }
   | { type: 'error'; error: { message: string } }
 
 export async function consumeTripPlanStream(
   response: Response,
-  onProgress: (step: WorkflowStep) => void,
+  onProgress: (decision: AgentDecision) => void,
 ): Promise<TasteRouteResponse> {
   if (!response.body) throw new Error('The planning stream is unavailable.')
 
@@ -19,7 +19,7 @@ export async function consumeTripPlanStream(
   const consumeLine = (line: string) => {
     if (!line.trim()) return
     const record = JSON.parse(line) as StreamRecord
-    if (record.type === 'progress') onProgress(record.step)
+    if (record.type === 'progress') onProgress(record.decision)
     if (record.type === 'result') result = record.response
     if (record.type === 'error') throw new Error(record.error.message)
   }
