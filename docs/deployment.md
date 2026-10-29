@@ -6,19 +6,21 @@ TasteRoute ships as one Docker image: Vite builds the Vue app, then FastAPI serv
 
 1. In Render, create a Blueprint from this private GitHub repository. Render reads the root `render.yaml`, links `main`, builds the root `Dockerfile`, and checks `GET /health`.
 2. During Blueprint creation, provide `QLOO_API_KEY`, `LLM_API_KEY`, `LLM_BASE_URL`, and `LLM_MODEL`. They are declared with `sync: false` and must never be committed.
-3. Optionally add `VITE_MAP_STYLE_URL` as a Render environment variable before the first polished build. Render supplies Docker service variables as build arguments, and the Dockerfile exposes only this non-secret value to Vite. If omitted, the public MapLibre demo style remains the fallback.
+3. No map credential is required: the production build defaults to the OpenFreeMap Liberty global street style. Optionally add `VITE_MAP_STYLE_URL` to select another MapLibre-compatible style; Render supplies that non-secret value to the Vite build through the matching Docker build argument.
 4. Keep one instance. Rate limits, concurrency guards, and caches are process-local.
 5. In the Render service's **Settings**, copy its secret Deploy Hook URL into the GitHub Actions secret `RENDER_DEPLOY_HOOK_URL`.
 6. Store the public `https://…onrender.com` service URL in the GitHub Actions repository variable `RENDER_SERVICE_URL`.
 
 `render.yaml` sets `autoDeployTrigger: off`, so Render does not race ahead of CI. On every push to `main`, GitHub Actions runs backend tests, frontend tests/build, and a production Docker build. Only after all three succeed does `Deploy Render` call the hook with `ref=<tested commit SHA>`. The job then polls `/health` until Render reports that exact commit, and automatically verifies the homepage and OpenAPI document. Pull requests never deploy, and missing deployment configuration fails CD instead of producing a false green result.
 
+The Blueprint currently uses Render's free plan. That is suitable for development but can show a 25–35 second cold-start interstitial after inactivity. Move the judging service to a non-sleeping Render plan before submitting the public demo; do not rely on synthetic keep-alive traffic.
+
 ## Railway: supported manual deployment
 
 1. Create a Railway service from this GitHub repository and select `main`.
 2. Railway detects `railway.json` and builds the root `Dockerfile`.
 3. Add `QLOO_API_KEY`, `LLM_API_KEY`, `LLM_BASE_URL`, and `LLM_MODEL` from `backend/.env.example` as service variables.
-4. Optionally add `VITE_MAP_STYLE_URL`; Railway exposes declared service variables to the Docker build through the matching Dockerfile `ARG`.
+4. Optionally add `VITE_MAP_STYLE_URL` to override the default OpenFreeMap Liberty style; Railway exposes declared service variables to the Docker build through the matching Dockerfile `ARG`.
 5. Generate a Railway domain. No `VITE_API_BASE_URL` is needed because production is same-origin.
 
 Railway is deployable now, but `.github/workflows/ci.yml` intentionally contains no Railway deployment job. Add one only after choosing Railway as an active release target and storing its credentials in GitHub.
@@ -28,6 +30,8 @@ Railway is deployable now, but `.github/workflows/ci.yml` intentionally contains
 Render verification is automatic in CI/CD. A green `Deploy Render` job proves `/health` reports the tested commit and that `/` plus `/openapi.json` satisfy the production smoke contract. `scripts/smoke-test.ps1` remains available only for optional local diagnosis or Railway verification.
 
 After deployment, complete one real itinerary in a private/incognito browser. The platform-provided `PORT` is consumed automatically by the container command.
+
+The browser submits generation requests to `POST /api/trip/plan/stream`. The endpoint returns newline-delimited `progress`, `result`, or safe `error` records. Reverse proxies must not buffer the response if the deployment architecture changes away from the current Render Docker service.
 
 ## Rollback and diagnosis
 

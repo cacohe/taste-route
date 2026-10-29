@@ -15,7 +15,8 @@ TasteRoute is a taste-grounded travel agent built for the Qloo Agentic Hackathon
 - One bounded repair pass when the model returns invalid dates or unknown place IDs.
 - Structured LangChain itinerary composition constrained to validated candidate IDs.
 - Taste DNA, named Qloo contribution signals, and a visible agent workflow trace.
-- Global MapLibre map using coordinates supplied by Qloo.
+- Real workflow progress streamed from the Qloo/LLM orchestration stages without fabricated percentages.
+- Global MapLibre street map with OpenFreeMap, itinerary-only markers, per-day route lines, and card/map linkage.
 - Public-demo rate limits, bounded concurrency, short-lived response caches, and a same-origin Docker deployment.
 
 ## Architecture
@@ -25,7 +26,7 @@ Vue taste selector
       │
       ├── GET /api/taste/entities ── Qloo Search
       │
-      └── POST /api/trip/plan
+      └── POST /api/trip/plan/stream (NDJSON progress + result)
               │
               ├── Qloo Insights (places + explainability)
               ├── deterministic validation
@@ -79,7 +80,7 @@ Open `http://localhost:5173`; backend API docs are at `http://localhost:8000/doc
 | `CORS_ORIGINS` | Comma-separated frontend origins |
 
 The frontend only needs `VITE_API_BASE_URL` when it is not served through the local Vite proxy.
-`VITE_MAP_STYLE_URL` selects a production MapLibre-compatible style; local development falls back to MapLibre's public demo style.
+OpenFreeMap Liberty is the default global street style. `VITE_MAP_STYLE_URL` optionally selects another MapLibre-compatible provider without changing application code.
 
 ## Production deployment
 
@@ -117,7 +118,7 @@ Fixture-based integration tests do not contact Qloo or the LLM. Live-key validat
 ## Known limitations
 
 - No account system or database; the generated plan is kept in browser session storage.
-- Route lines and turn-by-turn navigation are not implemented; MapLibre displays Qloo coordinates.
+- Route lines connect itinerary stops geometrically; turn-by-turn navigation and travel-time calculation are intentionally not implemented.
 - Demo rate limits and caches are process-local; use one application replica or introduce Redis before scaling horizontally.
 - MapLibre is intentionally isolated behind the lazy result route. Its audited library chunk is about 1.1 MB minified / 300 KB gzip and is not downloaded on the planner page.
 

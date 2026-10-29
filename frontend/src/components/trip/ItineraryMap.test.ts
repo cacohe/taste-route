@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ItineraryMapModel } from '@/utils/itineraryMap'
 import ItineraryMap from './ItineraryMap.vue'
@@ -10,14 +10,21 @@ const mapState = vi.hoisted(() => ({
   handlers: new Map<string, (event?: unknown) => void>(),
   layers: [] as unknown[],
   easeTo: vi.fn(),
+  setWorkerUrl: vi.fn(),
+  syncLoad: false,
 }))
+
+vi.mock('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url', () => ({ default: '/maplibre-worker.js' }))
 
 vi.mock('maplibre-gl', () => {
   class Map {
     constructor() { mapState.handlers.clear(); mapState.layers = [] }
     on(event: string, handler: (event?: unknown) => void) {
       mapState.handlers.set(event, handler)
-      if (event === 'load') queueMicrotask(() => handler())
+      if (event === 'load') {
+        if (mapState.syncLoad) handler()
+        else queueMicrotask(() => handler())
+      }
       return this
     }
     addControl() { return this }
@@ -37,7 +44,7 @@ vi.mock('maplibre-gl', () => {
   class Popup { setText() { return this } }
   class LngLatBounds { extend() { return this } }
   class NavigationControl {}
-  return { Map, Marker, Popup, LngLatBounds, NavigationControl }
+  return { Map, Marker, Popup, LngLatBounds, NavigationControl, setWorkerUrl: mapState.setWorkerUrl }
 })
 
 const model: ItineraryMapModel = {
@@ -54,7 +61,11 @@ describe('ItineraryMap', () => {
     mapState.handlers.clear()
     mapState.layers = []
     mapState.easeTo.mockReset()
+    mapState.setWorkerUrl.mockReset()
+    mapState.syncLoad = false
   })
+
+  afterEach(() => vi.useRealTimers())
 
   it('renders itinerary-only markers and a route layer', async () => {
     mount(ItineraryMap, { props: { model, selectedMarkerId: null } })
@@ -62,6 +73,7 @@ describe('ItineraryMap', () => {
 
     expect(mapState.markers.map((marker) => marker.textContent)).toEqual(['D1-1', 'D1-2'])
     expect(mapState.layers).toHaveLength(2)
+    expect(mapState.setWorkerUrl).toHaveBeenCalledWith('/maplibre-worker.js')
   })
 
   it('emits marker selection and highlights selection from the itinerary list', async () => {
@@ -84,6 +96,19 @@ describe('ItineraryMap', () => {
     await nextTick()
 
     expect(wrapper.text()).toContain('basemap is temporarily unavailable')
+  })
+
+  it('does not report a timeout when the map loads synchronously', async () => {
+    vi.useFakeTimers()
+    mapState.syncLoad = true
+    const wrapper = mount(ItineraryMap, { props: { model, selectedMarkerId: null } })
+    await flushPromises()
+
+    expect(vi.getTimerCount()).toBe(0)
+    await vi.advanceTimersByTimeAsync(12_001)
+    await nextTick()
+
+    expect(wrapper.text()).not.toContain('taking longer than expected')
   })
 
   it('explains candidate fallback markers when no route was composed', async () => {

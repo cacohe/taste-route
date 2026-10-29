@@ -11,6 +11,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { ItineraryMapModel } from '@/utils/itineraryMap'
 import { getMapStyleUrl } from '@/utils/mapConfig'
@@ -41,7 +42,8 @@ async function initMap() {
     return
   }
   try {
-    const { LngLatBounds, Map, Marker, NavigationControl, Popup } = await import('maplibre-gl')
+    const { LngLatBounds, Map, Marker, NavigationControl, Popup, setWorkerUrl } = await import('maplibre-gl')
+    setWorkerUrl(workerUrl)
     const first = props.model.markers[0]
     map = new Map({
       container: mapContainer.value,
@@ -49,6 +51,9 @@ async function initMap() {
       center: first.coordinates,
       zoom: 11,
     })
+    loadTimer = setTimeout(() => {
+      mapError.value = 'The basemap is taking too long to load. Itinerary evidence is still available below.'
+    }, 12000)
     map.on('error', () => {
       mapError.value = 'The basemap is temporarily unavailable. Itinerary evidence is still available below.'
     })
@@ -90,9 +95,6 @@ async function initMap() {
     })
     if (props.model.markers.length > 1) map.fitBounds(bounds, { padding: 55, maxZoom: 14 })
     updateSelection(props.selectedMarkerId)
-    loadTimer = setTimeout(() => {
-      mapError.value = 'The basemap is taking too long to load. Itinerary evidence is still available below.'
-    }, 12000)
   } catch {
     mapError.value = 'The basemap is temporarily unavailable. Itinerary evidence is still available below.'
   }
